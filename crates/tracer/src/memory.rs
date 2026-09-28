@@ -322,7 +322,8 @@ impl<'a> Reader<'a> {
         }
         let text = if is_char {
             self.read(addr, count.min(4096) as usize).map(|b| {
-                let end = b.iter().position(|x| *x == 0).unwrap_or(b.len());
+                // El texto termina en el \0 o donde empiezan los bytes nunca escritos.
+                let end = b.iter().position(|x| *x == 0 || *x == POISON).unwrap_or(b.len());
                 latin1(&b[..end])
             })
         } else {

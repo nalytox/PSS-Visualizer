@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const TRACES = ['fork_pipe', 'threads_mutex', 'signal_handler', 'structs_heap', 'fork_tree', '03_fork_simple', '04_fork_bucle', '05_exec', '16_fork_bomb'];
+const TRACES = ['fork_pipe', 'threads_mutex', 'signal_handler', 'structs_heap', 'fork_tree', '03_fork_simple', '04_fork_bucle', '05_exec', '16_fork_bomb', '06_pipe_padre_hijo', '07_pipe_sin_cerrar', '08_pipeline'];
 
 function collectErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -100,4 +100,12 @@ test('con más de ocho procesos aparece el minimapa', async ({ page }) => {
   await page.keyboard.press('End');
   await expect(page.locator('g.proc')).toHaveCount(32);
   await expect(page.locator('.minimap')).toBeVisible();
+});
+
+test('el pipe sin cerrar explica por qué el lector no termina', async ({ page }) => {
+  await page.goto('/#traza=07_pipe_sin_cerrar&t=0');
+  await expect(page.locator('g.proc')).toHaveCount(1);
+  await page.keyboard.press('End');
+  await expect(page.locator('.narration')).toContainText('mientras no lo cierre, read nunca devuelve EOF');
+  await expect(page.locator('g.port.warning')).toHaveCount(1);
 });

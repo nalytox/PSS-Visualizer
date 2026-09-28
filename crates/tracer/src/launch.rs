@@ -48,6 +48,16 @@ pub fn launch(dir: &Path, binary_name: &str, stdin: &[u8], stdin_eof: bool, limi
             // El programa solo hereda 0, 1 y 2: nada de los pipes o terminales del tracer (ni de
             // otras trazas que corran en paralelo en el mismo proceso).
             unsafe { libc::syscall(libc::SYS_close_range, 3u32, u32::MAX, 0u32) };
+            // Rust ignora SIGPIPE y esa disposición se hereda por exec: el programa debe partir con
+            // todas las señales en su acción por defecto y sin máscara, como desde una terminal.
+            unsafe {
+                for sig in 1..libc::SIGRTMIN() {
+                    libc::signal(sig, libc::SIG_DFL);
+                }
+                let mut none: libc::sigset_t = std::mem::zeroed();
+                libc::sigemptyset(&mut none);
+                libc::sigprocmask(libc::SIG_SETMASK, &none, std::ptr::null_mut());
+            }
             // Grupo propio: el pgid del programa es su PID y kill(0, …) no alcanza al tracer.
             unsafe { libc::setpgid(0, 0) };
             let _ = personality::set(Persona::ADDR_NO_RANDOMIZE);

@@ -9,6 +9,7 @@
 use crate::arch::{self, Regs};
 use crate::compile::{self, BINARY_NAME, SOURCE_NAME};
 use crate::dwarf::DebugInfo;
+use crate::fds::{self, FdTable, Pipes};
 use crate::heap::Heap;
 use crate::launch;
 use crate::limits::Limits;
@@ -266,6 +267,7 @@ struct Proc {
     vfork_child: Option<u32>,
     mem: Option<String>,
     output_bytes: u64,
+    fds: FdTable,
 }
 
 impl Proc {
@@ -286,6 +288,7 @@ struct Engine<'a> {
     _stdin_writer: Option<File>,
     stdin_consumed: u64,
     procs: Vec<Proc>,
+    pipes: Pipes,
     t: u64,
     clock: u64,
     cursor: usize,
@@ -364,6 +367,7 @@ impl<'a> Engine<'a> {
             vfork_child: None,
             mem: None,
             output_bytes: 0,
+            fds: fds::std_table(),
         };
         Engine {
             debug,
@@ -373,6 +377,7 @@ impl<'a> Engine<'a> {
             _stdin_writer: stdin_writer,
             stdin_consumed: 0,
             procs: vec![root],
+            pipes: Pipes::default(),
             t: 0,
             clock: 0,
             cursor: 0,
@@ -442,6 +447,7 @@ impl<'a> Engine<'a> {
                 Err(Halt::Exited(status)) => self.on_exit(i, status),
                 Err(Halt::End(end)) => return end,
             }
+            self.wake_io();
             self.commit(Some(i), executed, choices);
             self.cursor = i;
         }
@@ -470,6 +476,9 @@ impl<'a> Engine<'a> {
             .stmt_row_at(regs.pc())
             .map(|r| r.line)
             .unwrap_or(main.decl_line);
+        // Lo que hizo el loader antes de main (abrir y cerrar bibliotecas) no es del programa.
+        self.events.clear();
+        self.procs[0].fds = fds::std_table();
         self.capture(0, &regs, line);
         self.commit(None, None, Vec::new());
         Ok(())
@@ -514,7 +523,7 @@ impl<'a> Engine<'a> {
         if let Some(p) = self
             .procs
             .iter()
-            .find(|p| matches!(&p.state, PState::Blocked(BlockReason::Read { fd: 0, stdin: true, .. })))
+            .find(|p| matches!(&p.state, PState::Blocked(BlockReason::Read { stdin: true, .. })))
         {
             return Some(End::AwaitingInput(p.vpid));
         }
@@ -796,6 +805,37 @@ impl<'a> Engine<'a> {
 
     fn deliver_fatal(&mut self, i: usize, sig: Signal) -> Halt {
         let vpid = self.procs[i].vpid;
+        if sig == Signal::SIGPIPE {
+            self.events.push(Event::SignalSend {
+                from: SignalSource::Kernel {
+                    cause: KernelCause::Sigpipe,
+                },
+                to: vpid as i32,
+                signal: sig.as_str().into(),
+            });
+        }
+        let core = matches!(
+            sig,
+            Signal::SIGSEGV
+                | Signal::SIGABRT
+                | Signal::SIGFPE
+                | Signal::SIGILL
+                | Signal::SIGBUS
+                | Signal::SIGQUIT
+                | Signal::SIGTRAP
+                | Signal::SIGSYS
+        );
+        self.events.push(Event::SignalDeliver {
+            pid: vpid,
+            tid: vpid,
+            signal: sig.as_str().into(),
+            action: if core {
+                DeliverAction::Core
+            } else {
+                DeliverAction::Terminate
+            },
+            handler: None,
+        });
         if sig == Signal::SIGSEGV {
             let addr = ptrace::getsiginfo(self.procs[i].pid)
                 .map(|si| unsafe { si.si_addr() } as u64)
@@ -1029,13 +1069,20 @@ impl<'a> Engine<'a> {
     fn syscall_entry(&mut self, i: usize, nr: u64, args: [u64; 6]) -> Res<()> {
         let as_pid = |v: u64| v as i32 as i64;
         match nr {
-            // stdin agotado y todavía abierto: el proceso espera más entrada.
-            arch::SYS_READ if args[0] == 0 && !self.opts.stdin_eof && self.stdin_consumed >= self.stdin_len() => {
-                Err(Halt::Blocked(BlockReason::Read {
-                    fd: 0,
-                    pipe: None,
-                    stdin: true,
-                }))
+            arch::SYS_READ | arch::SYS_READV => match self.read_blocks(i, args[0] as u32) {
+                Some(r) => Err(Halt::Blocked(r)),
+                None => Ok(()),
+            },
+            arch::SYS_WRITE | arch::SYS_WRITEV => {
+                let n = if nr == arch::SYS_WRITE {
+                    args[2] as usize
+                } else {
+                    self.iov_len(i, args[1], args[2])
+                };
+                match self.write_blocks(i, args[0] as u32, n) {
+                    Some(r) => Err(Halt::Blocked(r)),
+                    None => Ok(()),
+                }
             }
             arch::SYS_CLONE | arch::SYS_CLONE3 | arch::SYS_FORK | arch::SYS_VFORK => {
                 let alive = self.procs.iter().filter(|p| p.state != PState::Reaped).count();
@@ -1152,7 +1199,82 @@ impl<'a> Engine<'a> {
         };
         match nr {
             arch::SYS_NANOSLEEP | arch::SYS_CLOCK_NANOSLEEP => rewrite(0)?,
+            arch::SYS_READ | arch::SYS_READV | arch::SYS_WRITE | arch::SYS_WRITEV => {
+                return Ok(self.io_exit(i, nr, args, ret));
+            }
             _ if ret < 0 => return Ok(false),
+            arch::SYS_PIPE | arch::SYS_PIPE2 => {
+                let Some(b) = self.procs[i].tracee.read(args[0], 8) else {
+                    return Ok(false);
+                };
+                let r = i32::from_le_bytes(b[..4].try_into().unwrap()) as u32;
+                let w = i32::from_le_bytes(b[4..].try_into().unwrap()) as u32;
+                let cloexec = nr == arch::SYS_PIPE2 && args[1] as i32 & libc::O_CLOEXEC != 0;
+                let id = self.pipes.create(vpid);
+                for (fd, end) in [(r, PipeEndKind::Read), (w, PipeEndKind::Write)] {
+                    let entry = Fd::Pipe {
+                        pipe: id.clone(),
+                        end,
+                        cloexec: None,
+                    };
+                    self.procs[i].fds.insert(fd, fds::with_cloexec(&entry, cloexec));
+                }
+                self.events.push(Event::Pipe {
+                    pid: vpid,
+                    pipe: id,
+                    fds: [r, w],
+                });
+            }
+            arch::SYS_DUP | arch::SYS_DUP2 | arch::SYS_DUP3 => {
+                let cloexec = nr == arch::SYS_DUP3 && args[2] as i32 & libc::O_CLOEXEC != 0;
+                self.dup_event(i, args[0] as u32, ret as u32, cloexec);
+            }
+            arch::SYS_FCNTL => match args[1] as i32 {
+                libc::F_DUPFD | libc::F_DUPFD_CLOEXEC => {
+                    self.dup_event(i, args[0] as u32, ret as u32, args[1] as i32 == libc::F_DUPFD_CLOEXEC)
+                }
+                libc::F_SETFD => {
+                    if let Some(e) = self.procs[i].fds.get_mut(&(args[0] as u32)) {
+                        *e = fds::with_cloexec(e, args[2] as i32 & libc::FD_CLOEXEC != 0);
+                    }
+                }
+                _ => {}
+            },
+            arch::SYS_CLOSE => {
+                if let Some(was) = self.procs[i].fds.remove(&(args[0] as u32)) {
+                    self.events.push(Event::Close {
+                        pid: vpid,
+                        fd: args[0] as u32,
+                        was,
+                    });
+                }
+            }
+            // Solo los archivos que abre el programa del usuario; los de una caja negra (sus
+            // bibliotecas, el directorio que lista ls) no se dibujan.
+            arch::SYS_OPEN | arch::SYS_OPENAT if self.procs[i].user_image() => {
+                let (path, flags) = if nr == arch::SYS_OPEN {
+                    (args[0], args[1])
+                } else {
+                    (args[1], args[2])
+                };
+                let path = self.procs[i].tracee.read_cstr(path, 256).unwrap_or_default();
+                let flags = flags as i32;
+                let mode = match flags & libc::O_ACCMODE {
+                    _ if flags & libc::O_APPEND != 0 => FileMode::A,
+                    libc::O_WRONLY => FileMode::W,
+                    libc::O_RDWR => FileMode::Rw,
+                    _ => FileMode::R,
+                };
+                let entry = Fd::File {
+                    path: String::from_utf8_lossy(&path).into_owned(),
+                    mode,
+                    cloexec: None,
+                };
+                self.procs[i]
+                    .fds
+                    .insert(ret as u32, fds::with_cloexec(&entry, flags & libc::O_CLOEXEC != 0));
+            }
+
             arch::SYS_GETPID | arch::SYS_GETTID => rewrite(vpid as u64)?,
             arch::SYS_GETPPID | arch::SYS_GETPGID | arch::SYS_GETPGRP | arch::SYS_GETSID => {
                 rewrite(self.vpid_of_real(ret).unwrap_or(INIT) as u64)?
@@ -1198,41 +1320,175 @@ impl<'a> Engine<'a> {
                     status,
                 });
             }
-            arch::SYS_WRITE if args[0] == 1 || args[0] == 2 => {
-                let bytes = self.procs[i].tracee.read(args[1], ret as usize).unwrap_or_default();
-                self.terminal_write(i, args[0] as u32, &bytes);
-                return Ok(true);
-            }
-            arch::SYS_WRITEV if args[0] == 1 || args[0] == 2 => {
-                let t = &self.procs[i].tracee;
-                let mut bytes = Vec::new();
-                for k in 0..args[2].min(64) {
-                    let base = t.read_u64(args[1] + k * 16).unwrap_or(0);
-                    let len = t.read_u64(args[1] + k * 16 + 8).unwrap_or(0);
-                    bytes.extend(t.read(base, len.min(1 << 16) as usize).unwrap_or_default());
-                }
-                bytes.truncate(ret as usize);
-                self.terminal_write(i, args[0] as u32, &bytes);
-                return Ok(true);
-            }
-            arch::SYS_READ if args[0] == 0 => {
-                let bytes = self.procs[i].tracee.read(args[1], ret as usize).unwrap_or_default();
-                self.stdin_consumed += ret as u64;
-                self.events.push(Event::Read {
-                    pid: vpid,
-                    tid: vpid,
-                    fd: 0,
-                    pipe: None,
-                    stdin: true,
-                    bytes: latin1(&bytes[..bytes.len().min(256)]),
-                    n: ret as u64,
-                    eof: ret == 0,
-                    into: Some(hex(args[1])),
-                });
-            }
             _ => {}
         }
         Ok(false)
+    }
+
+    fn dup_event(&mut self, i: usize, old: u32, new: u32, cloexec: bool) {
+        if old == new {
+            return;
+        }
+        if let Some(replaced) = fds::dup(&mut self.procs[i].fds, old, new, cloexec) {
+            self.events.push(Event::Dup {
+                pid: self.procs[i].vpid,
+                oldfd: old,
+                newfd: new,
+                replaced,
+            });
+        }
+    }
+
+    fn pipe_ends(&self, id: &str, kind: PipeEndKind) -> usize {
+        let tables = self.procs.iter().filter(|p| p.alive()).map(|p| (p.vpid, &p.fds));
+        fds::ends(tables, id, kind).len()
+    }
+
+    /// ¿Bloquearía un read en `fd`? stdin agotado sin EOF, o pipe vacío que todavía tiene escritores.
+    fn read_blocks(&self, i: usize, fd: u32) -> Option<BlockReason> {
+        match self.procs[i].fds.get(&fd)? {
+            Fd::Stdin { .. } if !self.opts.stdin_eof && self.stdin_consumed >= self.stdin_len() => {
+                Some(BlockReason::Read {
+                    fd,
+                    pipe: None,
+                    stdin: true,
+                })
+            }
+            Fd::Pipe {
+                pipe,
+                end: PipeEndKind::Read,
+                ..
+            } if self.pipes.len(pipe) == 0 && self.pipe_ends(pipe, PipeEndKind::Write) > 0 => Some(BlockReason::Read {
+                fd,
+                pipe: Some(pipe.clone()),
+                stdin: false,
+            }),
+            _ => None,
+        }
+    }
+
+    /// ¿Bloquearía un write de `n` bytes? Solo si el pipe tiene lectores y no le cabe.
+    fn write_blocks(&self, i: usize, fd: u32, n: usize) -> Option<BlockReason> {
+        match self.procs[i].fds.get(&fd)? {
+            Fd::Pipe {
+                pipe,
+                end: PipeEndKind::Write,
+                ..
+            } if self.pipe_ends(pipe, PipeEndKind::Read) > 0
+                && self.pipes.len(pipe) + n.min(fds::PIPE_CAPACITY) > fds::PIPE_CAPACITY =>
+            {
+                Some(BlockReason::Write { fd, pipe: pipe.clone() })
+            }
+            _ => None,
+        }
+    }
+
+    /// Tras cada paso: quien esperaba un pipe despierta si ya hay datos, espacio o EOF.
+    fn wake_io(&mut self) {
+        for i in 0..self.procs.len() {
+            let still = match &self.procs[i].state {
+                PState::Blocked(BlockReason::Read { fd, pipe: Some(_), .. }) => self.read_blocks(i, *fd).is_some(),
+                PState::Blocked(BlockReason::Write { fd, .. }) => {
+                    let n = match self.procs[i].sys {
+                        Some((nr, a)) if nr == arch::SYS_WRITE => a[2] as usize,
+                        Some((_, a)) => self.iov_len(i, a[1], a[2]),
+                        None => 0,
+                    };
+                    self.write_blocks(i, *fd, n).is_some()
+                }
+                _ => true,
+            };
+            if !still {
+                self.unblock(i);
+            }
+        }
+    }
+
+    fn iov_len(&self, i: usize, iov: u64, count: u64) -> usize {
+        let t = &self.procs[i].tracee;
+        (0..count.min(64))
+            .map(|k| t.read_u64(iov + k * 16 + 8).unwrap_or(0) as usize)
+            .sum()
+    }
+
+    fn gather(&self, i: usize, vector: bool, buf: u64, count: u64, n: usize) -> Vec<u8> {
+        let t = &self.procs[i].tracee;
+        let mut bytes = Vec::new();
+        if vector {
+            for k in 0..count.min(64) {
+                let base = t.read_u64(buf + k * 16).unwrap_or(0);
+                let len = t.read_u64(buf + k * 16 + 8).unwrap_or(0);
+                bytes.extend(t.read(base, len.min(1 << 16) as usize).unwrap_or_default());
+            }
+        } else {
+            bytes = t.read(buf, n.min(1 << 16)).unwrap_or_default();
+        }
+        bytes.truncate(n);
+        bytes
+    }
+
+    /// read, write y sus variantes vectoriales, según a qué apunta el fd. Devuelve true si hubo
+    /// E/S visible (terminal, stdin o pipe).
+    fn io_exit(&mut self, i: usize, nr: u64, args: [u64; 6], ret: i64) -> bool {
+        let vpid = self.procs[i].vpid;
+        let fd = args[0] as u32;
+        let write = nr == arch::SYS_WRITE || nr == arch::SYS_WRITEV;
+        let vector = nr == arch::SYS_WRITEV || nr == arch::SYS_READV;
+        let entry = self.procs[i].fds.get(&fd).cloned();
+        let pipe = fds::pipe_of(entry.as_ref()).map(|(id, _)| id.to_string());
+        if ret < 0 {
+            if write && ret == -(libc::EPIPE as i64) && pipe.is_some() {
+                self.events.push(Event::Write {
+                    pid: vpid,
+                    tid: vpid,
+                    fd,
+                    pipe,
+                    terminal: false,
+                    bytes: String::new(),
+                    n: 0,
+                    epipe: true,
+                });
+                return true;
+            }
+            return false;
+        }
+        let bytes = self.gather(i, vector, args[1], args[2], ret as usize);
+        let shown = latin1(&bytes[..bytes.len().min(256)]);
+        match (entry, write) {
+            (Some(Fd::Terminal { .. }), true) => self.terminal_write(i, fd, &bytes),
+            (Some(Fd::Pipe { pipe, .. }), true) => {
+                self.pipes.write(&pipe, &bytes);
+                self.events.push(Event::Write {
+                    pid: vpid,
+                    tid: vpid,
+                    fd,
+                    pipe: Some(pipe),
+                    terminal: false,
+                    bytes: shown,
+                    n: ret as u64,
+                    epipe: false,
+                });
+            }
+            (Some(Fd::Stdin { .. } | Fd::Pipe { .. }), false) => {
+                match &pipe {
+                    Some(id) => self.pipes.read(id, ret as usize),
+                    None => self.stdin_consumed += ret as u64,
+                }
+                self.events.push(Event::Read {
+                    pid: vpid,
+                    tid: vpid,
+                    fd,
+                    stdin: pipe.is_none(),
+                    pipe,
+                    bytes: shown,
+                    n: ret as u64,
+                    eof: ret == 0,
+                    into: (!vector).then(|| hex(args[1])),
+                });
+            }
+            _ => return false,
+        }
+        true
     }
 
     fn stdin_len(&self) -> u64 {
@@ -1306,6 +1562,7 @@ impl<'a> Engine<'a> {
             vfork_child: None,
             mem: None,
             output_bytes: 0,
+            fds: p.fds.clone(),
         };
         let parent = p.vpid;
         self.procs.push(c);
@@ -1338,6 +1595,7 @@ impl<'a> Engine<'a> {
         p.tracee = Tracee::attach(p.pid).map_err(|_| lost())?;
         p.maps = p.tracee.maps();
         p.heap = Heap::default();
+        fds::close_on_exec(&mut p.fds);
         p.calls.clear();
         p.last = None;
         p.mem = None;
@@ -1425,6 +1683,7 @@ impl<'a> Engine<'a> {
         let mem = self.final_memory(i, t);
         let p = &mut self.procs[i];
         p.exit = Some(exit);
+        p.fds.clear();
         p.at = At::User;
         // Un huérfano lo recoge init de inmediato.
         if p.ppid == Some(INIT) {
@@ -1544,14 +1803,6 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn std_fds() -> BTreeMap<Fdnum, Fd> {
-        BTreeMap::from([
-            (0, Fd::Stdin { cloexec: None }),
-            (1, Fd::Terminal { cloexec: None }),
-            (2, Fd::Terminal { cloexec: None }),
-        ])
-    }
-
     fn stdin_state(&self) -> StdinState {
         StdinState {
             size: self.stdin_len(),
@@ -1588,7 +1839,7 @@ impl<'a> Engine<'a> {
             created_at: p.created_at,
             image: p.image.clone(),
             exit: p.exit.clone(),
-            fds: if p.alive() { Self::std_fds() } else { BTreeMap::new() },
+            fds: if p.alive() { p.fds.clone() } else { BTreeMap::new() },
             signals: ProcessSignals {
                 mask: Vec::new(),
                 pending: Vec::new(),
@@ -1626,13 +1877,31 @@ impl<'a> Engine<'a> {
             clock: self.clock,
             events: std::mem::take(&mut self.events),
             processes,
-            pipes: Vec::new(),
+            pipes: self.pipe_view(),
             stdin: self.stdin_state(),
             signals: Vec::new(),
             timers: Vec::new(),
             sync: Vec::new(),
         });
         self.t = t;
+    }
+
+    fn pipe_view(&self) -> Vec<Pipe> {
+        let alive: Vec<(u32, &FdTable)> = self
+            .procs
+            .iter()
+            .filter(|p| p.alive())
+            .map(|p| (p.vpid, &p.fds))
+            .collect();
+        let reading: Vec<(u32, String)> = self
+            .procs
+            .iter()
+            .filter_map(|p| match &p.state {
+                PState::Blocked(BlockReason::Read { pipe: Some(id), .. }) => Some((p.vpid, id.clone())),
+                _ => None,
+            })
+            .collect();
+        fds::view(&self.pipes, &alive, &reading, latin1)
     }
 
     fn heap_type(&self, i: usize, addr: u64) -> Option<String> {

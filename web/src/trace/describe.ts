@@ -182,8 +182,13 @@ function eventText(index: TraceIndex, step: Step, prev: Step | undefined, ev: Ev
       return ev.kind === 'useAfterFree' ? `Acceso a memoria ya liberada (${ev.addr}).` : `Acceso inválido a memoria (${ev.addr}): segmentation fault.`;
     case 'stdinNeeded':
       return 'El programa pide más entrada: escribe algo en stdin para continuar.';
-    case 'deadlock':
-      return 'Deadlock: todas las tareas vivas están bloqueadas esperándose entre sí.';
+    case 'deadlock': {
+      const plug = step.pipes.flatMap((p) => p.warnings.map((w) => ({ pipe: p.id, ...w })))[0];
+      const why = plug
+        ? ` El proceso ${plug.pid} espera datos del pipe ${plug.pipe}, pero él mismo tiene abierto su extremo de escritura (fd ${plug.fd}): mientras no lo cierre, read nunca devuelve EOF.`
+        : '';
+      return `Deadlock: todas las tareas vivas están bloqueadas esperándose entre sí.${why}`;
+    }
     case 'truncated':
       return `La traza se cortó: ${ev.reason}.`;
   }

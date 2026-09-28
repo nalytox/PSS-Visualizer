@@ -166,6 +166,43 @@ fn fork_bomb_stops_at_the_process_limit() {
 }
 
 #[test]
+fn pipe_carries_bytes_from_child_to_parent_until_eof() {
+    let t = check("06_pipe_padre_hijo");
+    assert_eq!(t["outcome"]["code"], 0);
+    assert_eq!(
+        outputs(&t),
+        [(1000, "el padre ley\u{c3}\u{b3}: hola pap\u{c3}\u{a1}\n".to_string())]
+    );
+    let reads = events_of(&t, "read");
+    assert_eq!(reads.first().unwrap()["pipe"], "p0");
+    assert_eq!(reads.last().unwrap()["eof"], true);
+}
+
+#[test]
+fn an_unclosed_write_end_blocks_the_reader_forever() {
+    let t = check("07_pipe_sin_cerrar");
+    assert_eq!(outcome(&t), "deadlock");
+    let last = t["steps"].as_array().unwrap().last().unwrap();
+    let warnings = last["pipes"][0]["warnings"].as_array().unwrap();
+    assert_eq!(warnings.len(), 1);
+    assert_eq!(warnings[0]["pid"], 1000);
+    assert_eq!(warnings[0]["end"], "w");
+}
+
+#[test]
+fn pipeline_connects_three_black_boxes() {
+    let t = check("08_pipeline");
+    assert_eq!(outputs(&t), [(1003, "1\n".to_string())]);
+    assert_eq!(events_of(&t, "exec").len(), 3);
+    let dups: Vec<(u64, u64)> = events_of(&t, "dup")
+        .iter()
+        .map(|e| (e["oldfd"].as_u64().unwrap(), e["newfd"].as_u64().unwrap()))
+        .collect();
+    assert_eq!(dups.len(), 4);
+    assert!(dups.contains(&(3, 0)) && dups.contains(&(4, 1)) && dups.contains(&(6, 1)) && dups.contains(&(5, 0)));
+}
+
+#[test]
 fn same_input_gives_the_same_trace() {
     assert_eq!(trace_example("02_lista_enlazada"), trace_example("02_lista_enlazada"));
     assert_eq!(trace_example("04_fork_bucle"), trace_example("04_fork_bucle"));
@@ -256,6 +293,9 @@ fn every_reference_trace_matches_the_schema() {
         "04_fork_bucle",
         "05_exec",
         "16_fork_bomb",
+        "06_pipe_padre_hijo",
+        "07_pipe_sin_cerrar",
+        "08_pipeline",
     ] {
         let t = trace_example(name);
         let errors: Vec<String> = validator.iter_errors(&t).take(3).map(|e| e.to_string()).collect();

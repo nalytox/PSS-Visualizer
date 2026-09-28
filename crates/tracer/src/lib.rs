@@ -3,6 +3,7 @@
 pub mod arch;
 pub mod compile;
 pub mod dwarf;
+pub mod fds;
 pub mod heap;
 pub mod launch;
 pub mod limits;

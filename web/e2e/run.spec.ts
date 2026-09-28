@@ -83,3 +83,11 @@ test('un fork bomb termina en una traza truncada por el límite de procesos', as
   await page.keyboard.press('End');
   await expect(page.locator('.narration')).toContainText('límite de 32 procesos');
 });
+
+test('ls | grep c | wc -l cuenta una línea', async ({ page }) => {
+  await page.goto('/#ejemplo=08_pipeline&t=0');
+  await waitForTrace(page);
+  await page.keyboard.press('End');
+  await expect(terminal(page)).toContainText('1');
+  await expect(page.locator('g.proc')).toHaveCount(4);
+});

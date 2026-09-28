@@ -30,6 +30,16 @@ pub const SYS_SETPGID: u64 = libc::SYS_setpgid as u64;
 pub const SYS_GETSID: u64 = libc::SYS_getsid as u64;
 pub const SYS_NANOSLEEP: u64 = libc::SYS_nanosleep as u64;
 pub const SYS_CLOCK_NANOSLEEP: u64 = libc::SYS_clock_nanosleep as u64;
+pub const SYS_READV: u64 = libc::SYS_readv as u64;
+pub const SYS_PIPE: u64 = libc::SYS_pipe as u64;
+pub const SYS_PIPE2: u64 = libc::SYS_pipe2 as u64;
+pub const SYS_DUP: u64 = libc::SYS_dup as u64;
+pub const SYS_DUP2: u64 = libc::SYS_dup2 as u64;
+pub const SYS_DUP3: u64 = libc::SYS_dup3 as u64;
+pub const SYS_FCNTL: u64 = libc::SYS_fcntl as u64;
+pub const SYS_CLOSE: u64 = libc::SYS_close as u64;
+pub const SYS_OPEN: u64 = libc::SYS_open as u64;
+pub const SYS_OPENAT: u64 = libc::SYS_openat as u64;
 pub const SYS_PAUSE: u64 = libc::SYS_pause as u64;
 pub const SYS_RT_SIGSUSPEND: u64 = libc::SYS_rt_sigsuspend as u64;
 

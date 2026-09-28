@@ -346,8 +346,8 @@ function placePipes(step: Step, boxes: Map<number, BoxLayout>): PipeLayout[] {
     const wc = { x: w.x + w.w / 2 };
     const rc = { x: r.x + r.w / 2 };
     if (w === r) {
-      cx = w.x + w.w + 120;
-      cy = w.y + HEADER_H + 90;
+      cx = w.x + w.w + 190;
+      cy = w.y + HEADER_H + 130;
     } else if (Math.abs(w.y - r.y) > 1) {
       // Niveles distintos del árbol: el tubo va al costado, a la altura media de los puertos, para
       // que los cables no crucen la línea que une padre e hijo.

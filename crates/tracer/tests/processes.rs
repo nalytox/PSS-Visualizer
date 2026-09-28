@@ -212,3 +212,57 @@ int main(void) {
     assert_eq!(output(&t), [(1001, "1001 1000 1000\n"), (1000, "1001 1001\n")]);
     assert_eq!(trace(src, "").steps, t.steps);
 }
+
+#[test]
+fn writing_to_a_pipe_without_readers_raises_sigpipe() {
+    let t = trace(
+        r#"#include <unistd.h>
+int main(void) {
+    int fd[2];
+    pipe(fd);
+    close(fd[0]);
+    write(fd[1], "x", 1);
+    return 0;
+}
+"#,
+        "",
+    );
+    assert!(
+        matches!(&t.outcome, Outcome::Signaled { signal } if signal == "SIGPIPE"),
+        "{:?}",
+        t.outcome
+    );
+    assert!(events(&t).any(|e| matches!(e, Event::Write { epipe: true, .. })));
+    assert!(events(&t).any(|e| matches!(e, Event::SignalDeliver { signal, .. } if signal == "SIGPIPE")));
+}
+
+#[test]
+fn a_full_pipe_blocks_the_writer_until_someone_reads() {
+    let t = trace(
+        r#"#include <stdio.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
+static char big[70000];
+int main(void) {
+    int fd[2];
+    pipe(fd);
+    if (fork() == 0) {
+        close(fd[0]);
+        write(fd[1], big, 65536);
+        write(fd[1], big, 100);
+        return 0;
+    }
+    close(fd[1]);
+    long total = 0, n;
+    while ((n = read(fd[0], big, sizeof big)) > 0) total += n;
+    wait(NULL);
+    printf("%ld\n", total);
+    return 0;
+}
+"#,
+        "",
+    );
+    assert!(matches!(t.outcome, Outcome::Exited { code: 0 }), "{:?}", t.outcome);
+    assert_eq!(output(&t), [(1000, "65636\n")]);
+}
