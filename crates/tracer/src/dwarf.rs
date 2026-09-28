@@ -678,7 +678,12 @@ fn frame_offsets(obj: &object::File<'static>, endian: RunTimeEndian, functions: 
                 gimli::CfaRule::RegisterAndOffset { register, offset } if register.0 == crate::arch::DWARF_FP => {
                     u64::try_from(*offset).ok()
                 }
-                _ => None,
+                // En aarch64 gcc deja el CFA relativo a sp; el frame pointer apunta a donde guardó el
+                // frame pointer anterior, así que su regla da la misma distancia.
+                _ => match row.register(gimli::Register(crate::arch::DWARF_FP)) {
+                    Some(gimli::RegisterRule::Offset(o)) => u64::try_from(-o).ok(),
+                    _ => None,
+                },
             }
         })
         .collect()

@@ -93,8 +93,10 @@ export function Canvas({
 
   // Si lo que ocurrió en el paso quedó fuera de la vista, se desplaza (sin cambiar el zoom) para
   // mostrarlo: el proceso que avanzó, las señales que lo tocan y los tubos que usó.
+  // En el mismo commit que el paso: como efecto pasivo quedaba trabajo pendiente mientras llegaban
+  // teclas y React terminaba creyendo que era un ciclo de actualizaciones.
   const actorPid = step.actor?.pid;
-  useEffect(() => {
+  useLayoutEffect(() => {
     const rects: { x: number; y: number; w: number; h: number }[] = [];
     const box = actorPid !== undefined ? scene.boxes.get(actorPid) : undefined;
     if (box) rects.push({ x: box.x, y: box.y, w: box.w, h: Math.min(box.h, 260) });

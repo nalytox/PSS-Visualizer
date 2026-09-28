@@ -109,3 +109,16 @@ test('el pipe sin cerrar explica por qué el lector no termina', async ({ page }
   await expect(page.locator('.narration')).toContainText('mientras no lo cierre, read nunca devuelve EOF');
   await expect(page.locator('g.port.warning')).toHaveCount(1);
 });
+
+test('con la CPU lenta, cada tecla es un paso y no hay ciclos de actualización', async ({ page }) => {
+  const errors = collectErrors(page);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 8 });
+  await page.goto('/#traza=14_productor_consumidor&t=0');
+  await expect(counter(page)).toHaveText('0');
+  await page.keyboard.press('End');
+  const last = Number(await counter(page).textContent());
+  for (let t = last; t > 0; t--) await page.keyboard.press('ArrowLeft');
+  await expect(counter(page)).toHaveText('0');
+  expect(errors).toEqual([]);
+});

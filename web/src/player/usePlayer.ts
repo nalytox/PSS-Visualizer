@@ -1,5 +1,5 @@
 // Estado de reproducción: paso actual, animación en curso y controles. Toda la interfaz se deriva de t.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { nextEventStep, nextThreadStep, prevEventStep, runToLine } from '../trace/query.ts';
 import type { Trace } from '../trace/types.ts';
 
@@ -91,11 +91,15 @@ export function usePlayer(trace: Trace, initialT = 0): Player {
   useEffect(() => {
     if (!anim) return;
     let raf = 0;
+    // Como transición: un paso pedido con el teclado interrumpe el cuadro en curso sin que React
+    // lo cuente como actualización anidada (con la CPU lenta llegaba al límite y perdía teclas).
     const tick = () => {
       const p = Math.min(1, (performance.now() - anim.start) / anim.duration);
-      setProgress(p);
+      startTransition(() => {
+        setProgress(p);
+        if (p >= 1) setAnim(null);
+      });
       if (p < 1) raf = requestAnimationFrame(tick);
-      else setAnim(null);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
