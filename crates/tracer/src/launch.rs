@@ -65,6 +65,8 @@ pub fn launch(dir: &Path, binary_name: &str, stdin: &[u8], stdin_eof: bool, limi
             let _ = setrlimit(Resource::RLIMIT_CPU, cpu, cpu);
             let _ = setrlimit(Resource::RLIMIT_FSIZE, 1 << 20, 1 << 20);
             let _ = setrlimit(Resource::RLIMIT_CORE, 0, 0);
+            // El tamaño de la pila de cada hilo sale de este límite: fijo para que la traza no dependa de la máquina.
+            let _ = setrlimit(Resource::RLIMIT_STACK, 8 << 20, 8 << 20);
             if unsafe { libc::chdir(dir_c.as_ptr()) } != 0 || ptrace::traceme().is_err() {
                 fail();
             }

@@ -38,6 +38,20 @@ fn reference_path(name: &str) -> PathBuf {
     }
 }
 
+/// Las direcciones de pila dependen de la máquina (el frame de una señal crece con las extensiones
+/// XSAVE de la CPU, las pilas de hilos con el kernel): se comparan las trazas sin ellas. En una misma
+/// máquina la traza es idéntica byte a byte (ver same_input_gives_the_same_trace).
+fn without_addresses(v: &serde_json::Value) -> serde_json::Value {
+    match v {
+        serde_json::Value::String(s) if s.starts_with("0x") && s[2..].chars().all(|c| c.is_ascii_hexdigit()) => {
+            "0x".into()
+        }
+        serde_json::Value::Array(a) => a.iter().map(without_addresses).collect(),
+        serde_json::Value::Object(o) => o.iter().map(|(k, x)| (k.clone(), without_addresses(x))).collect(),
+        x => x.clone(),
+    }
+}
+
 fn check(name: &str) -> serde_json::Value {
     let actual = trace_example(name);
     let path = reference_path(name);
@@ -53,7 +67,7 @@ fn check(name: &str) -> serde_json::Value {
     }
     let expected: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
     assert!(
-        actual == expected,
+        without_addresses(&actual) == without_addresses(&expected),
         "{name}: la traza cambió respecto de la referencia (UPDATE_REFERENCE=1 para regenerarla)"
     );
     actual

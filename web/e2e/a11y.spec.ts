@@ -16,7 +16,9 @@ for (const theme of ['light', 'dark'] as const) {
       await page.goto(url);
       await expect(page.locator(url === '/' ? '.intro-caption' : 'g.proc').first()).toBeVisible({ timeout: 20_000 });
       await page.waitForTimeout(600);
-      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+      // La introducción es un diálogo modal: lo que queda detrás no es alcanzable mientras está abierta.
+      const axe = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']);
+      const results = await (url === '/' ? axe.include('.intro') : axe).analyze();
       const found = results.violations.map((v) => `${v.id}: ${v.nodes.length} × ${v.nodes[0]?.target.join(' ')} — ${v.nodes[0]?.failureSummary?.split('\n')[1] ?? ''}`);
       expect(found).toEqual([]);
     });
