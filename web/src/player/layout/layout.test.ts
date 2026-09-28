@@ -15,7 +15,7 @@ const all = readdirSync(root)
 const opts = { memOpen: () => true, inkOf: () => 'x' };
 
 describe('resolvePointer', () => {
-  const at = (addr: number, size: number, depth: number, array = false) => ({ addr, size, depth, array, freed: false, rect: { x: depth, y: 0, w: 1, h: 1 } });
+  const at = (addr: number, size: number, depth: number, array = false, type = '') => ({ addr, size, depth, array, type, freed: false, rect: { x: depth, y: 0, w: 1, h: 1 } });
 
   it('prefiere el struct completo antes que su primer campo', () => {
     const hit = resolvePointer([at(0x100, 8, 2), at(0x100, 8, 1)], 0x100);
@@ -124,3 +124,13 @@ describe('navegación', () => {
 function serializable(scene: ReturnType<typeof layoutScene>) {
   return { ...scene, boxes: [...scene.boxes.entries()] };
 }
+
+describe('resolvePointer con tipo', () => {
+  const at = (addr: number, size: number, depth: number, type: string) => ({ addr, size, depth, type, array: false, freed: false, rect: { x: depth, y: 0, w: 1, h: 1 } });
+  it('struct punto * apunta al campo esquina aunque r empiece en la misma dirección', () => {
+    const cells = [at(0x100, 24, 0, 'struct rect'), at(0x100, 8, 1, 'struct punto'), at(0x100, 4, 2, 'int')];
+    expect(resolvePointer(cells, 0x100, 'struct punto')?.type).toBe('struct punto');
+    expect(resolvePointer(cells, 0x100, 'struct rect')?.type).toBe('struct rect');
+    expect(resolvePointer(cells, 0x100, 'int')?.type).toBe('int');
+  });
+});

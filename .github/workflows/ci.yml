@@ -24,6 +24,8 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -37,6 +39,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Servidor y tracer para las pruebas de extremo a extremo
+        run: cargo build --release -p pss-server -p pss-tracer
+        working-directory: .
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
         env:

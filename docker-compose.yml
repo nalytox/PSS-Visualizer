@@ -8,3 +8,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    # El perfil seccomp por defecto de Docker prohíbe personality(ADDR_NO_RANDOMIZE), que el tracer
+    # usa para que las direcciones de memoria sean las mismas en cada ejecución. El contenedor sigue
+    # aislado: sin privilegios, usuario sin root y sistema de archivos de solo lectura.
+    security_opt:
+      - seccomp:unconfined

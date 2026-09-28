@@ -1,0 +1,17 @@
+[package]
+name = "pss-tracer"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+gimli = { version = "0.34.0", default-features = false, features = ["read", "std"] }
+libc = "0.2"
+nix = { version = "0.31.3", features = ["ptrace", "process", "signal", "personality", "resource", "uio", "term", "fs"] }
+object = { version = "0.40.0", default-features = false, features = ["read", "std"] }
+serde_json = "1.0.151"
+trace-model = { version = "0.1.0", path = "../trace-model" }
+
+[dev-dependencies]
+jsonschema = "0.58.1"

@@ -1297,6 +1297,14 @@
         "fn": {
           "type": "string",
           "description": "Puntero a función: nombre del destino."
+        },
+        "outside": {
+          "const": true,
+          "description": "Apunta a memoria válida que no se dibuja (literales de texto, datos de libc): no es un puntero colgante."
+        },
+        "text": {
+          "$ref": "#/$defs/Bytes",
+          "description": "Si apunta a caracteres fuera de lo dibujado, el texto (hasta 64 bytes)."
         }
       }
     },

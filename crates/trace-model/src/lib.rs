@@ -559,6 +559,11 @@ pub enum Value {
         target: Option<Addr>,
         #[serde(rename = "fn", default, skip_serializing_if = "Option::is_none")]
         func: Option<String>,
+        /// Memoria válida que no se dibuja (literales de texto, datos de libc).
+        #[serde(default, skip_serializing_if = "is_false")]
+        outside: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        text: Option<Bytes>,
     },
     Struct {
         fields: Vec<Field>,

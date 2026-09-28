@@ -15,7 +15,7 @@ FROM rust:1-bookworm AS server
 WORKDIR /src
 COPY Cargo.toml Cargo.lock rustfmt.toml ./
 COPY crates crates
-RUN cargo build --release -p pss-server
+RUN cargo build --release -p pss-server -p pss-tracer
 
 FROM debian:bookworm-slim
 # gcc compila los programas de los estudiantes (fase 1); coreutils y grep los usan los ejemplos con exec.
@@ -24,10 +24,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd --create-home --uid 10001 pss
 WORKDIR /app
-COPY --from=server /src/target/release/pss-server /usr/local/bin/pss-server
+COPY --from=server /src/target/release/pss-server /src/target/release/pss-tracer /usr/local/bin/
 COPY --from=web /src/web/dist /app/web/dist
 COPY config /app/config
-ENV PSS_HOST=0.0.0.0 PSS_PORT=8000 PSS_WEB_DIST=/app/web/dist
+ENV PSS_HOST=0.0.0.0 PSS_PORT=8000 PSS_WEB_DIST=/app/web/dist PSS_LIMITS=/app/config/limits.toml
 USER pss
 EXPOSE 8000
 CMD ["pss-server"]

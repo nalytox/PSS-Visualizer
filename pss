@@ -28,8 +28,9 @@ if [ ! -f web/dist/index.html ] || [ -n "$(find web/src web/index.html traces sc
   echo "pss: compilando la interfaz…"
   (cd web && npm run build --silent)
 fi
-echo "pss: compilando el servidor…"
-cargo build --release --quiet -p pss-server
+command -v gcc >/dev/null || fail "falta gcc: instálalo con tu gestor de paquetes (por ejemplo, sudo apt install build-essential)"
+echo "pss: compilando el servidor y el tracer…"
+cargo build --release --quiet -p pss-server -p pss-tracer
 
 open_browser() {
   sleep 1
@@ -41,4 +42,4 @@ open_browser() {
 }
 open_browser >/dev/null 2>&1 &
 
-PSS_PORT="$PORT" PSS_WEB_DIST="web/dist" exec ./target/release/pss-server
+PSS_PORT="$PORT" PSS_WEB_DIST="web/dist" PSS_LIMITS="config/limits.toml" exec ./target/release/pss-server

@@ -1,9 +1,11 @@
 // Panel de código fijo a la izquierda (como en Python Tutor), con un cursor de color por hilo.
-// En la fase 0 es de solo lectura: muestra el programa de la traza.
+// En modo edición se escribe el programa; al visualizar queda de solo lectura con las marcas.
 import { cpp } from '@codemirror/lang-cpp';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { EditorState, RangeSet, StateEffect, StateField, type Extension } from '@codemirror/state';
-import { Decoration, EditorView, GutterMarker, gutter, lineNumbers, type DecorationSet } from '@codemirror/view';
+import { Compartment, EditorState, RangeSet, StateEffect, StateField, type Extension } from '@codemirror/state';
+import { Decoration, EditorView, GutterMarker, gutter, keymap, lineNumbers, type DecorationSet } from '@codemirror/view';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+import type { Diagnostic } from '../trace/types.ts';
 import { tags } from '@lezer/highlight';
 import { useEffect, useRef } from 'react';
 
@@ -19,6 +21,7 @@ export interface CodeMarks {
   next: number | null;
   hover: number | null;
   cursors: ThreadCursor[];
+  diagnostics?: Diagnostic[];
 }
 
 const setMarks = StateEffect.define<CodeMarks>();
@@ -43,6 +46,11 @@ const lineDecorations = EditorView.decorations.compute([marksField], (state): De
   if (m.next !== m.executed) add(m.next, 'cm-next');
   else add(m.next, 'cm-next cm-same');
   if (m.hover !== null && m.hover !== m.next && m.hover !== m.executed) add(m.hover, 'cm-hover');
+  for (const d of m.diagnostics ?? []) {
+    if (d.severity !== 'note' && !ranges.some((r) => r.from === state.doc.line(Math.min(Math.max(1, d.line), state.doc.lines)).from)) {
+      add(d.line, d.severity === 'error' ? 'cm-diag-error' : 'cm-diag-warning');
+    }
+  }
   ranges.sort((a, b) => a.from - b.from);
   return Decoration.set(ranges, true);
 });
@@ -110,11 +118,19 @@ const theme = EditorView.theme({
   '.cm-content': { caretColor: 'transparent' },
 });
 
-export function CodePanel(props: { source: string; marks: CodeMarks; onLineClick: (line: number) => void }) {
+export function CodePanel(props: {
+  source: string;
+  marks: CodeMarks;
+  onLineClick: (line: number) => void;
+  editable?: boolean;
+  onChange?: (source: string) => void;
+  onRun?: () => void;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
-  const click = useRef(props.onLineClick);
-  click.current = props.onLineClick;
+  const editableConf = useRef(new Compartment());
+  const cb = useRef(props);
+  cb.current = props;
 
   useEffect(() => {
     if (!host.current) return;
@@ -124,22 +140,42 @@ export function CodePanel(props: { source: string; marks: CodeMarks; onLineClick
         doc: props.source,
         extensions: [
           marksField,
-          cursorGutter((line) => click.current(line)),
-          lineNumbers({ domEventHandlers: { mousedown: (vw, block) => (click.current(vw.state.doc.lineAt(block.from).number), true) } }),
+          cursorGutter((line) => !cb.current.editable && cb.current.onLineClick(line)),
+          lineNumbers({
+            domEventHandlers: {
+              mousedown: (vw, block) => {
+                if (!cb.current.editable) cb.current.onLineClick(vw.state.doc.lineAt(block.from).number);
+                return !cb.current.editable;
+              },
+            },
+          }),
+          history(),
+          keymap.of([
+            { key: 'Mod-Enter', run: () => (cb.current.onRun?.(), true) },
+            indentWithTab,
+            ...defaultKeymap,
+            ...historyKeymap,
+          ]),
           cpp(),
           syntaxHighlighting(highlight),
           lineDecorations,
-          EditorState.readOnly.of(true),
-          EditorView.editable.of(false),
-          EditorView.contentAttributes.of({ 'aria-label': 'Código fuente del programa (solo lectura)' }),
+          editableConf.current.of(editableExt(!!props.editable)),
+          EditorView.updateListener.of((u) => {
+            if (u.docChanged) cb.current.onChange?.(u.state.doc.toString());
+          }),
+          EditorView.contentAttributes.of({ 'aria-label': 'Código fuente del programa' }),
           theme,
         ],
       }),
     });
     view.current = v;
     return () => v.destroy();
-    // El editor se crea una sola vez; el documento y las marcas se actualizan abajo.
+    // El editor se crea una sola vez; documento, modo y marcas se actualizan abajo.
   }, []);
+
+  useEffect(() => {
+    view.current?.dispatch({ effects: editableConf.current.reconfigure(editableExt(!!props.editable)) });
+  }, [props.editable]);
 
   useEffect(() => {
     const v = view.current;
@@ -151,12 +187,16 @@ export function CodePanel(props: { source: string; marks: CodeMarks; onLineClick
     const v = view.current;
     if (!v) return;
     const effects: StateEffect<unknown>[] = [setMarks.of(props.marks)];
-    const focus = props.marks.hover ?? props.marks.next;
+    const focus = props.marks.hover ?? props.marks.next ?? props.marks.diagnostics?.find((d) => d.severity === 'error')?.line ?? null;
     if (focus !== null && focus >= 1 && focus <= v.state.doc.lines) {
       effects.push(EditorView.scrollIntoView(v.state.doc.line(focus).from, { y: 'nearest', yMargin: 40 }));
     }
     v.dispatch({ effects });
   }, [props.marks]);
 
-  return <div ref={host} className="code-host" />;
+  return <div ref={host} className={`code-host${props.editable ? ' editing' : ''}`} />;
+}
+
+function editableExt(editable: boolean): Extension {
+  return [EditorState.readOnly.of(!editable), EditorView.editable.of(editable)];
 }

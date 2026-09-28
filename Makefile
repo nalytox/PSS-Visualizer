@@ -19,7 +19,7 @@ web:
 	cd web && npm ci --no-audit --no-fund && npm run build
 
 server:
-	cargo build --release -p pss-server
+	cargo build --release -p pss-server -p pss-tracer
 
 test: test-rust test-web
 
@@ -31,7 +31,7 @@ test-rust:
 test-web:
 	cd web && npm run gen:types:check && npm run typecheck && npm test
 
-e2e:
+e2e: server
 	cd web && npm run build && npm run e2e
 
 synth:

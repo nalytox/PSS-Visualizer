@@ -46,12 +46,13 @@ interface Located {
   depth: number; // 0 = variable o bloque completo; mayor = más anidado
   freed: boolean;
   array: boolean;
+  type: string;
 }
 
 interface Ctx {
   prims: Prim[];
   located: Located[];
-  pointers: { rect: Rect; target: string }[];
+  pointers: { rect: Rect; target: string; pointee: string }[];
   values: Map<string, string>;
   freed: boolean;
 }
@@ -75,10 +76,14 @@ function scalarText(v: Extract<Value, { kind: 'scalar' }>): string {
   return v.repr ?? String(v.value);
 }
 
-function locate(ctx: Ctx, addr: number | null, size: number, rect: Rect, depth: number, array = false) {
+function locate(ctx: Ctx, addr: number | null, size: number, rect: Rect, depth: number, type: string, array = false) {
   if (addr === null || size <= 0) return;
-  ctx.located.push({ addr, size, rect, depth, freed: ctx.freed, array });
+  ctx.located.push({ addr, size, rect, depth, freed: ctx.freed, array, type: normType(type) });
 }
+
+const normType = (t: string) => t.replace(/\s+/g, ' ').trim();
+// "struct punto *" → "struct punto"
+const pointeeOf = (t: string) => normType(t).replace(/\s*\*$/, '');
 
 // Nodo de un valor. `addr` y `size` permiten registrar la celda como destino de punteros.
 function valueNode(v: Value, key: string, addr: number | null, size: number, uninit: boolean, depth: number, type: string): Node {
@@ -93,7 +98,7 @@ function valueNode(v: Value, key: string, addr: number | null, size: number, uni
           const r = { x, y, w, h: CELL_H };
           ctx.prims.push({ k: 'cell', r, text, key, uninit, tip: `${type}${addr !== null ? ' @ 0x' + addr.toString(16) : ''}` });
           ctx.values.set(key, text);
-          locate(ctx, addr, size, r, depth);
+          locate(ctx, addr, size, r, depth, type);
         },
       };
     }
@@ -107,11 +112,28 @@ function valueNode(v: Value, key: string, addr: number | null, size: number, uni
           const r = { x, y, w, h: CELL_H };
           ctx.prims.push({ k: 'cell', r, text, key, uninit, tip: type, italic: true });
           ctx.values.set(key, text);
-          locate(ctx, addr, size, r, depth);
+          locate(ctx, addr, size, r, depth, type);
         },
       };
     }
     case 'pointer': {
+      // Memoria válida que no se dibuja (un literal "hola", datos de libc): se muestra el texto o la
+      // dirección, sin flecha, para no confundirlo con un puntero colgante.
+      if (v.outside && !uninit) {
+        const text = v.text !== undefined ? `→ "${visible(v.text)}"` : `→ ${v.target}`;
+        const w = textW(text) + 14;
+        return {
+          w,
+          h: CELL_H,
+          draw: (x, y, ctx) => {
+            const r = { x, y, w, h: CELL_H };
+            const tip = v.text !== undefined ? `${type}: apunta a un texto fuera del stack y del heap (por ejemplo, un literal)` : `${type}: apunta a memoria que no se dibuja`;
+            ctx.prims.push({ k: 'cell', r, text, key, uninit, tip });
+            ctx.values.set(key, text);
+            locate(ctx, addr, size, r, depth, type);
+          },
+        };
+      }
       if (v.fn) {
         const text = uninit ? '?' : `→ ${v.fn}()`;
         const w = textW(text) + 14;
@@ -122,7 +144,7 @@ function valueNode(v: Value, key: string, addr: number | null, size: number, uni
             const r = { x, y, w, h: CELL_H };
             ctx.prims.push({ k: 'cell', r, text, key, uninit, tip: `${type}: puntero a la función ${v.fn}` });
             ctx.values.set(key, text);
-            locate(ctx, addr, size, r, depth);
+            locate(ctx, addr, size, r, depth, type);
           },
         };
       }
@@ -136,8 +158,8 @@ function valueNode(v: Value, key: string, addr: number | null, size: number, uni
           const tip = uninit ? `${type} sin inicializar` : target === null ? `${type} = NULL` : `${type} → ${target}`;
           ctx.prims.push({ k: 'ptr', r, key, target, tip, uninit });
           ctx.values.set(key, uninit ? '?' : String(target));
-          locate(ctx, addr, size, r, depth);
-          if (target !== null) ctx.pointers.push({ rect: r, target });
+          locate(ctx, addr, size, r, depth, type);
+          if (target !== null) ctx.pointers.push({ rect: r, target, pointee: pointeeOf(type) });
         },
       };
     }
@@ -153,7 +175,7 @@ function valueNode(v: Value, key: string, addr: number | null, size: number, uni
             const r = { x, y, w, h: CELL_H };
             ctx.prims.push({ k: 'cell', r, text, key, uninit, tip: `${type}: ${v.length} bytes, se muestra hasta el \\0` });
             ctx.values.set(key, text);
-            locate(ctx, addr, size, r, depth);
+            locate(ctx, addr, size, r, depth, type);
           },
         };
       }
@@ -170,7 +192,7 @@ function valueNode(v: Value, key: string, addr: number | null, size: number, uni
         draw: (x, y, ctx) => {
           const r = { x, y, w, h };
           ctx.prims.push({ k: 'box', r: { x, y: y + INDEX_H - 2, w, h: h - INDEX_H + 2 }, key });
-          locate(ctx, addr, size, { x, y: y + INDEX_H, w, h: h - INDEX_H }, depth, true);
+          locate(ctx, addr, size, { x, y: y + INDEX_H, w, h: h - INDEX_H }, depth, type, true);
           let cx = x + 2;
           items.forEach((n, i) => {
             ctx.prims.push({ k: 'index', x: cx + n.w / 2, y: y + INDEX_H - 4, text: String(i) });
@@ -204,7 +226,7 @@ function tableNode(fields: (Field | Var)[], key: string, addr: number | null, si
     h,
     draw: (x, y, ctx) => {
       ctx.prims.push({ k: 'box', r: { x, y, w, h }, key });
-      locate(ctx, addr, size, { x, y, w, h }, depth);
+      locate(ctx, addr, size, { x, y, w, h }, depth, type);
       let cy = y + 2;
       fields.forEach((f, i) => {
         const rh = heights[i];
@@ -262,7 +284,7 @@ function heapBlock(b: HeapBlock, leak: boolean): Block {
       ctx.prims.push({ k: 'heap', r: { x, y, w, h }, title, sub, freed, leak, addr: b.addr });
       const saved = ctx.freed;
       ctx.freed = freed;
-      locate(ctx, addr, b.size, { x, y, w, h }, 0);
+      locate(ctx, addr, b.size, { x, y, w, h }, 0, b.type ?? '');
       inner.draw(x + PAD, y + 24, ctx);
       ctx.freed = saved;
     },
@@ -386,8 +408,8 @@ export function layoutMemory(
   w = Math.max(w, x);
   const h = y + colsH;
 
-  const arrows: Arrow[] = ctx.pointers.map(({ rect, target }) => {
-    const hit = resolvePointer(ctx.located, parseAddr(target));
+  const arrows: Arrow[] = ctx.pointers.map(({ rect, target, pointee }) => {
+    const hit = resolvePointer(ctx.located, parseAddr(target), pointee);
     const from = { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
     if (!hit) return { from, target, to: null, side: 'left', freed: false };
     const side = hit.rect.x > rect.x + rect.w + 10 ? 'left' : 'right';
@@ -399,9 +421,13 @@ export function layoutMemory(
 
 // Destino de un puntero: la celda más externa que empieza exactamente en esa dirección; si no hay,
 // la más interna que la contiene. Sin coincidencia, el puntero es colgante.
-// Un puntero al inicio de un arreglo apunta a su primer elemento, como en C.
-export function resolvePointer(located: Located[], addr: number): Located | null {
+// Destino de un puntero: entre las celdas que empiezan en esa dirección, la del tipo apuntado
+// (&r.esquina y &r comparten dirección, pero struct punto * apunta al campo). Si ninguna calza, la
+// más externa; un puntero al inicio de un arreglo apunta a su primer elemento, como en C.
+export function resolvePointer(located: Located[], addr: number, pointee?: string): Located | null {
   const exact = located.filter((l) => l.addr === addr).sort((a, b) => a.depth - b.depth);
+  const typed = pointee ? exact.find((l) => l.type === pointee) : undefined;
+  if (typed) return typed;
   const firstNonArray = exact.find((l) => !l.array);
   if (exact.length > 0) return exact[0].array && firstNonArray ? firstNonArray : exact[0];
   const inside = located.filter((l) => addr > l.addr && addr < l.addr + l.size).sort((a, b) => b.depth - a.depth);

@@ -74,9 +74,13 @@ export type Value = ScalarValue | PointerValue | StructValue | ArrayValue | Opaq
  */
 export type Addr = string;
 /**
- * char[]: contenido hasta el primer \0.
+ * Si apunta a caracteres fuera de lo dibujado, el texto (hasta 64 bytes).
  */
 export type Bytes1 = string;
+/**
+ * char[]: contenido hasta el primer \0.
+ */
+export type Bytes2 = string;
 /**
  * This interface was referenced by `Trace`'s JSON-Schema
  * via the `definition` "ExitStatus".
@@ -95,7 +99,7 @@ export type Fd = FdStdin | FdTerminal | FdPipe | FdFile | FdOther;
 /**
  * Truncado a 256 bytes.
  */
-export type Bytes2 = string;
+export type Bytes3 = string;
 /**
  * Dirección del buffer destino.
  */
@@ -103,7 +107,7 @@ export type Addr1 = string;
 /**
  * Truncado a 256 bytes.
  */
-export type Bytes3 = string;
+export type Bytes4 = string;
 /**
  * This interface was referenced by `Trace`'s JSON-Schema
  * via the `definition` "BlockReason".
@@ -142,7 +146,7 @@ export type SnapshotId = string;
 /**
  * Primeros 256 bytes del buffer.
  */
-export type Bytes4 = string;
+export type Bytes5 = string;
 /**
  * This interface was referenced by `Trace`'s JSON-Schema
  * via the `definition` "SyncObject".
@@ -158,7 +162,7 @@ export type SignalName1 = string;
  * This interface was referenced by `Trace`'s JSON-Schema
  * via the `definition` "Bytes".
  */
-export type Bytes5 = string;
+export type Bytes6 = string;
 
 /**
  * Traza de ejecución de un programa C: lista ordenada de pasos globales con el estado completo del sistema después de cada paso.
@@ -396,6 +400,11 @@ export interface PointerValue {
    * Puntero a función: nombre del destino.
    */
   fn?: string;
+  /**
+   * Apunta a memoria válida que no se dibuja (literales de texto, datos de libc): no es un puntero colgante.
+   */
+  outside?: true;
+  text?: Bytes1;
 }
 /**
  * This interface was referenced by `Trace`'s JSON-Schema
@@ -428,7 +437,7 @@ export interface ArrayValue {
    */
   length: number;
   items: Value[];
-  text?: Bytes1;
+  text?: Bytes2;
 }
 /**
  * This interface was referenced by `Trace`'s JSON-Schema
@@ -627,7 +636,7 @@ export interface EventRead {
   fd: Fdnum;
   pipe?: string;
   stdin?: true;
-  bytes: Bytes2;
+  bytes: Bytes3;
   n: number;
   eof: boolean;
   into?: Addr1;
@@ -643,7 +652,7 @@ export interface EventWrite {
   fd: Fdnum;
   pipe?: string;
   terminal?: true;
-  bytes: Bytes3;
+  bytes: Bytes4;
   n: number;
   epipe?: true;
 }
@@ -1026,7 +1035,7 @@ export interface Pipe {
   id: string;
   createdBy: Pid;
   size: number;
-  buffer: Bytes4;
+  buffer: Bytes5;
   capacity: number;
   readers: PipeEnd[];
   writers: PipeEnd[];
@@ -1188,7 +1197,7 @@ export interface OutputChunk {
   pid: Pid;
   fd: Fdnum;
   stream: 'stdout' | 'stderr';
-  bytes: Bytes5;
+  bytes: Bytes6;
 }
 /**
  * This interface was referenced by `Trace`'s JSON-Schema
