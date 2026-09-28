@@ -85,6 +85,9 @@ pub struct Function {
     pub decl_line: u32,
     /// Primera dirección después del prólogo: antes de ella el frame no está armado.
     pub body_start: u64,
+    /// En el cuerpo, CFA = frame pointer + `cfa_fp` (16 en x86_64; en aarch64 depende del tamaño
+    /// del frame). Sale de la información de unwind (.eh_frame).
+    pub cfa_fp: u64,
     pub ret: Option<TypeId>,
     pub vars: Vec<VarDecl>,
 }
@@ -153,10 +156,21 @@ impl DebugInfo {
         for (f, b) in out.functions.iter_mut().zip(body_starts) {
             f.body_start = b;
         }
+        let cfi = frame_offsets(&obj, endian, &out.functions);
+        for (f, off) in out.functions.iter_mut().zip(cfi) {
+            if let Some(off) = off {
+                f.cfa_fp = off;
+            }
+        }
         if out.functions.iter().all(|f| f.name != "main") {
             return Err("el programa no tiene una función main con información de depuración".into());
         }
         Ok(out)
+    }
+
+    /// CFA del frame que ejecuta `pc`, a partir de su frame pointer.
+    pub fn cfa_at(&self, pc: u64, fp: u64) -> u64 {
+        fp + self.function_at(pc).map_or(16, |f| f.cfa_fp)
     }
 
     pub fn function_at(&self, pc: u64) -> Option<&Function> {
@@ -412,6 +426,7 @@ impl UnitParser<'_> {
                             .and_then(|v| v.udata_value())
                             .unwrap_or(0) as u32;
                         self.out.functions.push(Function {
+                            cfa_fp: 16,
                             name,
                             low,
                             high,
@@ -633,4 +648,38 @@ impl UnitParser<'_> {
             _ => TypeKind::Void,
         })
     }
+}
+
+/// Para cada función, el desplazamiento del CFA respecto del frame pointer al empezar su cuerpo,
+/// según .eh_frame. `None` si no hay información o la regla no usa el frame pointer.
+fn frame_offsets(obj: &object::File<'static>, endian: RunTimeEndian, functions: &[Function]) -> Vec<Option<u64>> {
+    use gimli::UnwindSection;
+    use object::{Object, ObjectSection};
+    let Some(section) = obj.section_by_name(".eh_frame") else {
+        return vec![None; functions.len()];
+    };
+    let Ok(data) = section.data() else {
+        return vec![None; functions.len()];
+    };
+    let eh = gimli::EhFrame::new(data, endian);
+    let mut bases = gimli::BaseAddresses::default().set_eh_frame(section.address());
+    if let Some(text) = obj.section_by_name(".text") {
+        bases = bases.set_text(text.address());
+    }
+    let mut ctx = gimli::UnwindContext::new();
+    functions
+        .iter()
+        .map(|f| {
+            let fde = eh
+                .fde_for_address(&bases, f.body_start, gimli::EhFrame::cie_from_offset)
+                .ok()?;
+            let row = fde.unwind_info_for_address(&eh, &bases, &mut ctx, f.body_start).ok()?;
+            match row.cfa() {
+                gimli::CfaRule::RegisterAndOffset { register, offset } if register.0 == crate::arch::DWARF_FP => {
+                    u64::try_from(*offset).ok()
+                }
+                _ => None,
+            }
+        })
+        .collect()
 }

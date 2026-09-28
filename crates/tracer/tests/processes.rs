@@ -401,3 +401,66 @@ int main(void) {
     assert!(matches!(t.outcome, Outcome::Exited { code: 0 }), "{:?}", t.outcome);
     assert_eq!(output(&t), [(1000, "hilo\n")]);
 }
+
+#[test]
+fn setitimer_real_uses_the_virtual_clock_too() {
+    let t = trace(
+        r#"#include <signal.h>
+#include <stdio.h>
+#include <sys/time.h>
+#include <unistd.h>
+void h(int s) { printf("tic\n"); }
+int main(void) {
+    signal(SIGALRM, h);
+    struct itimerval v = {{0, 0}, {1, 500000}};
+    setitimer(ITIMER_REAL, &v, NULL);
+    pause();
+    return 0;
+}
+"#,
+        "",
+    );
+    assert_eq!(output(&t), [(1000, "tic\n")]);
+    assert!(t.steps.last().unwrap().clock >= 1500);
+}
+
+#[test]
+fn frame_offsets_come_from_the_unwind_information() {
+    let dir = std::env::temp_dir().join(format!("pss-cfi-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let src = "int f(int a) { int b[40]; b[0] = a; return b[0]; }\nint main(void) { return f(1); }\n";
+    let compiled = pss_tracer::compile::compile(&dir, src).unwrap();
+    let debug = pss_tracer::dwarf::DebugInfo::load(&compiled.binary, "prog.c").unwrap();
+    for f in &debug.functions {
+        // Con frame pointer en x86_64 el CFA está siempre 16 bytes sobre rbp; en aarch64 depende del
+        // tamaño del frame, así que solo se exige que exista.
+        if cfg!(target_arch = "x86_64") {
+            assert_eq!(f.cfa_fp, 16, "{}", f.name);
+        } else {
+            assert!(f.cfa_fp >= 16, "{}", f.name);
+        }
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn ppoll_without_descriptors_waits_like_pause_or_sleep() {
+    let t = trace(
+        r#"#define _GNU_SOURCE
+#include <poll.h>
+#include <stdio.h>
+#include <time.h>
+int main(void) {
+    struct timespec ts = {2, 0};
+    ppoll(NULL, 0, &ts, NULL);
+    printf("listo\n");
+    ppoll(NULL, 0, NULL, NULL);
+    return 0;
+}
+"#,
+        "",
+    );
+    assert_eq!(output(&t), [(1000, "listo\n")]);
+    assert!(matches!(t.outcome, Outcome::Deadlock { .. }), "{:?}", t.outcome);
+    assert!(t.steps.last().unwrap().clock >= 2000);
+}

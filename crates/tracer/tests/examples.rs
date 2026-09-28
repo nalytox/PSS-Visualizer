@@ -28,11 +28,27 @@ fn trace_example(name: &str) -> serde_json::Value {
     serde_json::to_value(&trace).unwrap()
 }
 
+/// Las referencias dependen de la arquitectura (direcciones, syscalls que usa glibc): las de x86_64
+/// están en traces/reference/ y las de aarch64 en traces/reference/aarch64/.
+fn reference_path(name: &str) -> PathBuf {
+    if cfg!(target_arch = "aarch64") {
+        root().join(format!("traces/reference/aarch64/{name}.json"))
+    } else {
+        root().join(format!("traces/reference/{name}.json"))
+    }
+}
+
 fn check(name: &str) -> serde_json::Value {
     let actual = trace_example(name);
-    let path = root().join(format!("traces/reference/{name}.json"));
+    let path = reference_path(name);
     if std::env::var_os("UPDATE_REFERENCE").is_some() {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, serde_json::to_string(&actual).unwrap() + "\n").unwrap();
+        return actual;
+    }
+    if !path.exists() {
+        // Sin referencia grabada para esta arquitectura: se validan solo las propiedades de cada prueba.
+        eprintln!("{name}: sin referencia en {}", path.display());
         return actual;
     }
     let expected: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();

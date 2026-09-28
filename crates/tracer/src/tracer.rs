@@ -75,7 +75,7 @@ fn work_dir() -> PathBuf {
 fn empty_trace(opts: &Options, compile: CompileResult, outcome: Outcome) -> Trace {
     Trace {
         version: 1,
-        arch: Arch::X86_64,
+        arch: arch::ARCH,
         source: opts.source.clone(),
         stdin: latin1(&opts.stdin),
         run: RunConfig {
@@ -247,7 +247,7 @@ struct LibCall {
     name: String,
     args: [u64; 4],
     ret_addr: u64,
-    orig: u8,
+    orig: Vec<u8>,
     /// Registros al entrar: con ellos se lee la pila del llamador mientras la llamada no vuelve.
     regs: Regs,
 }
@@ -262,7 +262,7 @@ enum At {
     /// Hilo recién creado: corre hasta la primera instrucción de su función.
     Start {
         addr: u64,
-        orig: u8,
+        orig: Vec<u8>,
     },
     /// main ya volvió: corre libc hasta el exit.
     Exiting,
@@ -587,12 +587,15 @@ impl<'a> Engine<'a> {
     fn start_root(&mut self) -> Res<()> {
         let main_idx = self.debug.functions.iter().position(|f| f.name == "main").unwrap();
         let main = &self.debug.functions[main_idx];
-        let orig = self.procs[0].tracee.read(main.body_start, 1).ok_or_else(lost)?;
-        self.run_to(0, main.body_start, orig[0])?;
+        let orig = self.procs[0]
+            .tracee
+            .read(main.body_start, arch::BREAKPOINT.len())
+            .ok_or_else(lost)?;
+        self.run_to(0, main.body_start, &orig)?;
         let p = &mut self.procs[0];
         p.maps = p.tracee.maps();
         let regs = Regs::get(p.pid).map_err(|_| lost())?;
-        let cfa = arch::cfa_of(regs.fp());
+        let cfa = self.debug.cfa_at(regs.pc(), regs.fp());
         let ret_addr = p.tracee.read_u64(arch::return_address_slot(regs.fp())).unwrap_or(0);
         p.calls.push(CallFrame {
             func: main_idx,
@@ -901,7 +904,7 @@ impl<'a> Engine<'a> {
                 return self.follow_handlers(i, r).map(Some);
             }
             At::Start { addr, orig } => {
-                let r = self.run_to(i, addr, orig).and_then(|_| {
+                let r = self.run_to(i, addr, &orig).and_then(|_| {
                     self.procs[i].at = At::User;
                     self.procs[i].last = None;
                     self.step_lines(i, true)
@@ -981,11 +984,11 @@ impl<'a> Engine<'a> {
                         looped = true;
                     }
                     if pc == f.low {
-                        let ret_addr = p.tracee.read_u64(regs.sp()).unwrap_or(0);
+                        let ret_addr = regs.entry_return_address(|a| p.tracee.read_u64(a));
                         p.calls.push(CallFrame {
                             func: fi,
                             ret_addr,
-                            cfa: regs.sp() + 8,
+                            cfa: regs.entry_cfa(),
                             poisoned: false,
                             signal: None,
                         });
@@ -997,7 +1000,7 @@ impl<'a> Engine<'a> {
                     let Some(row) = debug.stmt_row_at(pc) else {
                         continue;
                     };
-                    let cfa = arch::cfa_of(regs.fp());
+                    let cfa = debug.cfa_at(pc, regs.fp());
                     if let Some(last) = &p.last
                         && cfa == last.cfa
                         && row.line == last.line
@@ -1016,7 +1019,7 @@ impl<'a> Engine<'a> {
                     return Ok((regs, row.line));
                 }
                 None => {
-                    let ret_addr = self.procs[i].tracee.read_u64(regs.sp()).unwrap_or(0);
+                    let ret_addr = regs.entry_return_address(|a| self.procs[i].tracee.read_u64(a));
                     if debug.function_at(ret_addr).is_some() {
                         self.library_call(i, regs, ret_addr)?;
                         check_here = true;
@@ -1049,9 +1052,9 @@ impl<'a> Engine<'a> {
     }
 
     /// Continúa (con paradas en syscalls) hasta llegar a `addr`, donde pone un breakpoint.
-    fn run_to(&mut self, i: usize, addr: u64, orig: u8) -> Res<()> {
+    fn run_to(&mut self, i: usize, addr: u64, orig: &[u8]) -> Res<()> {
         // Se reescribe siempre: un hijo de vfork que comparte la memoria pudo haberlo quitado.
-        self.procs[i].tracee.write(addr, &[arch::BREAKPOINT]);
+        self.procs[i].tracee.write(addr, arch::BREAKPOINT);
         loop {
             self.resume_syscall(i)?;
             match self.wait(i)? {
@@ -1059,7 +1062,7 @@ impl<'a> Engine<'a> {
                     let pid = self.procs[i].pid;
                     let mut regs = Regs::get(pid).map_err(|_| lost())?;
                     if regs.pc() == arch::pc_after_breakpoint(addr) {
-                        self.procs[i].tracee.write(addr, &[orig]);
+                        self.procs[i].tracee.write(addr, orig);
                         regs.set_pc(addr);
                         let _ = regs.set(pid);
                         return Ok(());
@@ -1071,7 +1074,7 @@ impl<'a> Engine<'a> {
                 WaitStatus::PtraceEvent(_, _, ev) => self.ptrace_event(i, ev)?,
                 WaitStatus::Stopped(_, sig) => {
                     if is_fatal(sig) {
-                        self.procs[i].tracee.write(addr, &[orig]);
+                        self.procs[i].tracee.write(addr, orig);
                     }
                     self.signal_stop(i, sig)?;
                 }
@@ -1136,11 +1139,11 @@ impl<'a> Engine<'a> {
             return Ok(());
         };
         let p = &mut self.procs[i];
-        let ret_addr = p.tracee.read_u64(hregs.sp()).unwrap_or(0);
+        let ret_addr = hregs.entry_return_address(|a| p.tracee.read_u64(a));
         p.calls.push(CallFrame {
             func: fi,
             ret_addr,
-            cfa: hregs.sp() + 8,
+            cfa: hregs.entry_cfa(),
             poisoned: false,
             signal: Some(sig as i32),
         });
@@ -1312,7 +1315,10 @@ impl<'a> Engine<'a> {
             func: name.clone(),
             summary,
         });
-        let orig = self.procs[i].tracee.read(ret_addr, 1).ok_or_else(lost)?[0];
+        let orig = self.procs[i]
+            .tracee
+            .read(ret_addr, arch::BREAKPOINT.len())
+            .ok_or_else(lost)?;
         let call = LibCall {
             name,
             args,
@@ -1325,7 +1331,7 @@ impl<'a> Engine<'a> {
     }
 
     fn finish_call(&mut self, i: usize, call: LibCall) -> Res<()> {
-        self.run_to(i, call.ret_addr, call.orig)?;
+        self.run_to(i, call.ret_addr, &call.orig)?;
         let p = &mut self.procs[i];
         p.at = At::User;
         if matches!(
@@ -1551,6 +1557,25 @@ impl<'a> Engine<'a> {
                 Ok(())
             }
             arch::SYS_PAUSE => Err(Halt::Blocked(BlockReason::Pause)),
+            // ppoll sin descriptores es como pause (glibc implementa así pause en aarch64) o, con
+            // tiempo límite, como un sleep.
+            arch::SYS_PPOLL if args[1] == 0 => {
+                if args[2] == 0 {
+                    return Err(Halt::Blocked(BlockReason::Pause));
+                }
+                let t = &self.procs[i].tracee;
+                let ms = match (t.read_u64(args[2]), t.read_u64(args[2] + 8)) {
+                    (Some(sec), Some(nsec)) => sec.saturating_mul(1000).saturating_add(nsec.div_ceil(1_000_000)),
+                    _ => 0,
+                };
+                let pid = self.procs[i].pid;
+                let mut regs = Regs::get(pid).map_err(|_| lost())?;
+                arch::skip_syscall(pid, &mut regs).map_err(|_| lost())?;
+                if ms == 0 {
+                    return Ok(());
+                }
+                Err(Halt::Blocked(BlockReason::Sleep { until: self.clock + ms }))
+            }
             arch::SYS_FUTEX => {
                 let op = args[1] as i32 & 0x7f;
                 if op != libc::FUTEX_WAIT && op != libc::FUTEX_WAIT_BITSET {
@@ -1573,11 +1598,11 @@ impl<'a> Engine<'a> {
                 Err(Halt::Blocked(BlockReason::Sigsuspend))
             }
             // alarm usa el reloj virtual: el tracer envía SIGALRM cuando el reloj llega a su hora.
-            arch::SYS_ALARM => {
+            // setitimer(ITIMER_REAL) es como alarm (glibc lo usa para alarm en aarch64).
+            arch::SYS_ALARM | arch::SYS_SETITIMER if nr == arch::SYS_ALARM || args[0] == 0 => {
                 let pid = self.procs[i].pid;
                 let mut regs = Regs::get(pid).map_err(|_| lost())?;
-                regs.skip_syscall();
-                regs.set(pid).map_err(|_| lost())
+                arch::skip_syscall(pid, &mut regs).map_err(|_| lost())
             }
             // El reloj es virtual: la espera no ocurre en el kernel, el proceso queda bloqueado
             // hasta que el reloj llegue a su hora.
@@ -1591,8 +1616,7 @@ impl<'a> Engine<'a> {
                 let ms = sec.saturating_mul(1000).saturating_add(nsec.div_ceil(1_000_000));
                 let pid = self.procs[i].pid;
                 let mut regs = Regs::get(pid).map_err(|_| lost())?;
-                regs.skip_syscall();
-                regs.set(pid).map_err(|_| lost())?;
+                arch::skip_syscall(pid, &mut regs).map_err(|_| lost())?;
                 if ms == 0 {
                     return Ok(());
                 }
@@ -1645,21 +1669,29 @@ impl<'a> Engine<'a> {
         };
         match nr {
             arch::SYS_NANOSLEEP | arch::SYS_CLOCK_NANOSLEEP => rewrite(0)?,
+            arch::SYS_PPOLL if args[1] == 0 && args[2] != 0 => rewrite(0)?,
             arch::SYS_READ | arch::SYS_READV | arch::SYS_WRITE | arch::SYS_WRITEV => {
                 return Ok(self.io_exit(i, nr, args, ret));
             }
             arch::SYS_ALARM => {
-                let vpid = self.procs[i].vpid;
-                let left = self
-                    .timers
-                    .iter()
-                    .find(|(p, _)| *p == vpid)
-                    .map_or(0, |(_, at)| at.saturating_sub(self.clock).div_ceil(1000));
-                self.timers.retain(|(p, _)| *p != vpid);
-                if args[0] > 0 {
-                    self.timers.push((vpid, self.clock + args[0] * 1000));
+                let left = self.set_timer(i, args[0] * 1000);
+                rewrite(left.div_ceil(1000))?
+            }
+            arch::SYS_SETITIMER if args[0] == 0 => {
+                // struct itimerval { it_interval, it_value }: cada timeval es (segundos, microsegundos).
+                let t = &self.procs[i].tracee;
+                let ms = match (t.read_u64(args[1] + 16), t.read_u64(args[1] + 24)) {
+                    (Some(sec), Some(usec)) if args[1] != 0 => sec * 1000 + usec.div_ceil(1000),
+                    _ => 0,
+                };
+                let left = self.set_timer(i, ms);
+                if args[2] != 0 {
+                    let mut old = vec![0u8; 32];
+                    old[16..24].copy_from_slice(&(left / 1000).to_le_bytes());
+                    old[24..32].copy_from_slice(&((left % 1000) * 1000).to_le_bytes());
+                    self.procs[i].tracee.write(args[2], &old);
                 }
-                rewrite(left)?
+                rewrite(0)?
             }
             _ if ret < 0 => return Ok(false),
             arch::SYS_KILL | arch::SYS_TKILL | arch::SYS_TGKILL => {
@@ -1812,6 +1844,21 @@ impl<'a> Engine<'a> {
             _ => {}
         }
         Ok(false)
+    }
+
+    /// Programa (o cancela, con 0) la alarma del proceso; devuelve los ms que le quedaban a la anterior.
+    fn set_timer(&mut self, i: usize, ms: u64) -> u64 {
+        let vpid = self.procs[i].vpid;
+        let left = self
+            .timers
+            .iter()
+            .find(|(p, _)| *p == vpid)
+            .map_or(0, |(_, at)| at.saturating_sub(self.clock));
+        self.timers.retain(|(p, _)| *p != vpid);
+        if ms > 0 {
+            self.timers.push((vpid, self.clock + ms));
+        }
+        left
     }
 
     fn dup_event(&mut self, i: usize, old: u32, new: u32, cloexec: bool) {
@@ -2096,7 +2143,7 @@ impl<'a> Engine<'a> {
         if let Some(parent) = self.procs[i].vfork_parent.take() {
             // La memoria compartida ya no es del hijo: se quita su breakpoint del padre.
             if let (At::Lib(call), Some(pi)) = (&self.procs[i].at, self.index_of(parent)) {
-                self.procs[pi].tracee.write(call.ret_addr, &[call.orig]);
+                self.procs[pi].tracee.write(call.ret_addr, &call.orig);
             }
             self.release_vfork_parent(parent);
         }
@@ -2301,8 +2348,8 @@ impl<'a> Engine<'a> {
             let (r, l) = match &h.at {
                 At::Lib(call) => {
                     let mut r = call.regs;
-                    r.set_pc(call.ret_addr - 1);
-                    (r, self.debug.line_of(call.ret_addr - 1).unwrap_or(0))
+                    r.set_pc(arch::call_site(call.ret_addr));
+                    (r, self.debug.line_of(arch::call_site(call.ret_addr)).unwrap_or(0))
                 }
                 _ => (h.regs, h.last.as_ref().map_or(0, |s| s.line)),
             };
@@ -2340,7 +2387,7 @@ impl<'a> Engine<'a> {
         p.last = Some(Stop {
             pc: regs.pc(),
             line,
-            cfa: arch::cfa_of(regs.fp()),
+            cfa: self.debug.cfa_at(regs.pc(), regs.fp()),
             func,
         });
     }
@@ -2352,8 +2399,8 @@ impl<'a> Engine<'a> {
             return;
         };
         let mut regs = call.regs;
-        regs.set_pc(call.ret_addr - 1);
-        let line = self.debug.line_of(call.ret_addr - 1).unwrap_or(0);
+        regs.set_pc(arch::call_site(call.ret_addr));
+        let line = self.debug.line_of(arch::call_site(call.ret_addr)).unwrap_or(0);
         self.capture(i, &regs, line);
     }
 
@@ -2490,7 +2537,7 @@ impl<'a> Engine<'a> {
         if let At::Lib(call) = &self.procs[i].at
             && self.procs[i].alive()
         {
-            self.procs[i].tracee.write(call.ret_addr, &[call.orig]);
+            self.procs[i].tracee.write(call.ret_addr, &call.orig);
         }
     }
 
@@ -2539,7 +2586,7 @@ impl<'a> Engine<'a> {
         };
         let f = self.debug.functions.iter().find(|f| f.low == start_addr);
         let (name, decl) = f.map_or((hex(start_addr), 0), |f| (f.name.clone(), f.decl_line));
-        let orig = tracee.read(start_addr, 1).map_or(0, |b| b[0]);
+        let orig = tracee.read(start_addr, arch::BREAKPOINT.len()).unwrap_or_default();
         let p = &self.procs[i];
         let start = ThreadStart {
             func: name.clone(),

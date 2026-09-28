@@ -6,15 +6,15 @@ Programación de Sistemas: `fork`, `exec`, `wait`, `pipe`, `dup2`, señales, `pt
 
 Todo corre en tu computador. No se sube código a ningún servidor.
 
-> **Estado: fase 6.** Compila y traza programas con varios procesos (`fork`, `exec` como caja
+> **Estado: las siete fases del plan.** Compila y traza programas con varios procesos (`fork`, `exec` como caja
 > negra, `wait`, zombies y huérfanos), pipes con `dup2`, señales (handlers, máscaras, SIGCHLD, alarm
 > y Ctrl+C) e hilos (mutex, variables de condición, semáforos, deadlock y planificación round-robin,
 > aleatoria o manual), con memoria completa y entrada estándar. Incluye el modo introducción con
-> cuatro capítulos animados. Falta arm64 (fase 7); ver `docs/fases/`.
+> cuatro capítulos animados. Corre en x86_64 y arm64 (aarch64); ver `docs/fases/`.
 
 ## Cómo ejecutarlo
 
-### Con Docker (cualquier sistema)
+### Con Docker (cualquier sistema, también Mac con Apple Silicon)
 
 ```sh
 docker compose up --build
@@ -22,7 +22,7 @@ docker compose up --build
 
 Luego abre <http://localhost:8000>.
 
-### Nativo (Linux o Windows con WSL2)
+### Nativo (Linux x86_64 o arm64, o Windows con WSL2)
 
 Necesitas gcc, [Rust](https://rustup.rs) y [Node.js](https://nodejs.org) 20 o superior.
 

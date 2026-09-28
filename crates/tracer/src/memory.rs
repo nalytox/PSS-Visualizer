@@ -40,7 +40,7 @@ pub fn unwind(debug: &DebugInfo, tracee: &Tracee, regs: &Regs, current_line: u32
         };
         frames.push(FrameInfo {
             func,
-            cfa: arch::cfa_of(fp),
+            cfa: debug.cfa_at(pc, fp),
             pc,
             line,
         });

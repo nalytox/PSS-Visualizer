@@ -6,7 +6,11 @@ on:
 
 jobs:
   rust:
-    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        # aarch64 corre en un runner arm64 real: ptrace no funciona bajo emulación.
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -16,6 +20,14 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
+      - name: Trazas de referencia de aarch64 (se suben para revisarlas y agregarlas al repositorio)
+        if: matrix.os == 'ubuntu-24.04-arm'
+        run: UPDATE_REFERENCE=1 cargo test -p pss-tracer --test examples
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-24.04-arm'
+        with:
+          name: referencias-aarch64
+          path: traces/reference/aarch64/
 
   web:
     runs-on: ubuntu-24.04
