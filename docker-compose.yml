@@ -6,8 +6,9 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     read_only: true
+    # Docker monta los tmpfs con noexec por defecto, y ahí se compilan y ejecutan los programas.
     tmpfs:
-      - /tmp
+      - /tmp:exec,mode=1777
     # El perfil seccomp por defecto de Docker prohíbe personality(ADDR_NO_RANDOMIZE), que el tracer
     # usa para que las direcciones de memoria sean las mismas en cada ejecución. El contenedor sigue
     # aislado: sin privilegios, usuario sin root y sistema de archivos de solo lectura.

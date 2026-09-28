@@ -464,3 +464,18 @@ int main(void) {
     assert!(matches!(t.outcome, Outcome::Deadlock { .. }), "{:?}", t.outcome);
     assert!(t.steps.last().unwrap().clock >= 2000);
 }
+
+#[test]
+fn a_binary_that_cannot_be_executed_reports_why() {
+    use std::os::unix::fs::PermissionsExt;
+    // Como en un /tmp montado con noexec: el exec falla con EACCES y se informa, en vez de un
+    // "no pudo iniciarse" sin causa.
+    let dir = std::env::temp_dir().join(format!("pss-noexec-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let bin = dir.join("prog");
+    std::fs::write(&bin, b"\x7fELF").unwrap();
+    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o644)).unwrap();
+    let r = pss_tracer::launch::launch(&dir, "prog", b"", true, &Limits::default());
+    assert_eq!(r.err(), Some(nix::errno::Errno::EACCES));
+    std::fs::remove_dir_all(&dir).unwrap();
+}

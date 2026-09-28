@@ -23,6 +23,9 @@ pub const STDIN_MAX: usize = 65536;
 
 pub fn launch(dir: &Path, binary_name: &str, stdin: &[u8], stdin_eof: bool, limits: &Limits) -> nix::Result<Launched> {
     let (stdin_r, stdin_w) = nix::unistd::pipe2(nix::fcntl::OFlag::O_CLOEXEC)?;
+    // Si el hijo no llega a ejecutar el programa, escribe aquí el errno. Con O_CLOEXEC un exec
+    // exitoso cierra el pipe y el padre lee EOF.
+    let (err_r, err_w) = nix::unistd::pipe2(nix::fcntl::OFlag::O_CLOEXEC)?;
     // stdout y stderr van a una pseudo-terminal: así printf tiene buffer de línea, como en una
     // terminal real. La salida se captura en las syscalls write; el maestro solo se vacía.
     let pty = nix::pty::openpty(None, None)?;
@@ -40,14 +43,23 @@ pub fn launch(dir: &Path, binary_name: &str, stdin: &[u8], stdin_eof: bool, limi
 
     match unsafe { fork()? } {
         ForkResult::Child => {
-            // Solo llamadas seguras tras fork: si algo falla, se sale con 127.
-            let fail = || unsafe { libc::_exit(127) };
+            // Solo llamadas seguras tras fork: si algo falla, se informa el errno y se sale con 127.
+            let err_fd = std::os::fd::AsRawFd::as_raw_fd(&err_w);
+            let fail = || unsafe {
+                let errno = *libc::__errno_location();
+                libc::write(err_fd, (&errno as *const i32).cast(), 4);
+                libc::_exit(127)
+            };
             if dup2_stdin(&stdin_r).is_err() || dup2_stdout(&pty.slave).is_err() || dup2_stderr(&pty.slave).is_err() {
                 fail();
             }
             // El programa solo hereda 0, 1 y 2: nada de los pipes o terminales del tracer (ni de
-            // otras trazas que corran en paralelo en el mismo proceso).
-            unsafe { libc::syscall(libc::SYS_close_range, 3u32, u32::MAX, 0u32) };
+            // otras trazas que corran en paralelo en el mismo proceso). El pipe de errores queda
+            // abierto hasta el exec, que lo cierra.
+            unsafe {
+                libc::syscall(libc::SYS_close_range, 3u32, (err_fd - 1) as u32, 0u32);
+                libc::syscall(libc::SYS_close_range, (err_fd + 1) as u32, u32::MAX, 0u32);
+            }
             // Rust ignora SIGPIPE y esa disposición se hereda por exec: el programa debe partir con
             // todas las señales en su acción por defecto y sin máscara, como desde una terminal.
             unsafe {
@@ -75,6 +87,12 @@ pub fn launch(dir: &Path, binary_name: &str, stdin: &[u8], stdin_eof: bool, limi
             unreachable!()
         }
         ForkResult::Parent { child } => {
+            drop(err_w);
+            let mut errno = [0u8; 4];
+            if File::from(err_r).read_exact(&mut errno).is_ok() {
+                let _ = nix::sys::wait::waitpid(child, None);
+                return Err(nix::errno::Errno::from_raw(i32::from_ne_bytes(errno)));
+            }
             drop(stdin_r);
             drop(pty.slave);
             drain(pty.master);

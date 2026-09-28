@@ -150,7 +150,14 @@ fn run_in(dir: &Path, opts: &Options) -> Trace {
                 line: 0,
                 col: 0,
                 severity: Severity::Error,
-                message: format!("no se pudo lanzar el programa: {e}"),
+                message: match e {
+                    nix::errno::Errno::EACCES => {
+                        "no se pudo ejecutar el programa compilado: el directorio temporal no permite \
+                                                  ejecutar archivos (¿está montado con noexec?)"
+                            .into()
+                    }
+                    e => format!("no se pudo lanzar el programa: {e}"),
+                },
             });
             trace.compile.ok = false;
             trace.outcome = Outcome::CompileError;
