@@ -15,6 +15,7 @@ use crate::launch;
 use crate::limits::Limits;
 use crate::memory::{self, Reader, hex, latin1};
 use crate::process::{Mapping, Tracee};
+use crate::signals::{self, Action, SigState};
 use crate::syms::Symbols;
 use nix::sys::ptrace;
 use nix::sys::signal::Signal;
@@ -45,6 +46,8 @@ pub struct Options {
     pub stdin: Vec<u8>,
     pub stdin_eof: bool,
     pub limits: Limits,
+    /// Señales enviadas desde la terminal (Ctrl+C) justo después del paso indicado.
+    pub injections: Vec<(u64, i32)>,
 }
 
 pub fn run(opts: &Options) -> Trace {
@@ -76,7 +79,15 @@ fn empty_trace(opts: &Options, compile: CompileResult, outcome: Outcome) -> Trac
             seed: 0,
             stdin_eof: opts.stdin_eof,
             schedule: Vec::new(),
-            injections: Vec::new(),
+            injections: opts
+                .injections
+                .iter()
+                .map(|(t, sig)| Injection {
+                    t: *t,
+                    signal: signals::name(*sig),
+                    target: InjectionTarget::Foreground,
+                })
+                .collect(),
             limits: opts.limits.to_model(),
         },
         compile,
@@ -182,6 +193,11 @@ enum Halt {
     Exited(WaitStatus),
     /// Cargó otro programa: el paso termina en el exec.
     Exec,
+    /// Entró a un handler de señal: se sigue avanzando por sus líneas.
+    Diverted,
+    /// El paso termina con el proceso dentro de una llamada a biblioteca (volvió de un handler
+    /// que interrumpió esa llamada).
+    Paused,
     End(End),
 }
 
@@ -206,6 +222,17 @@ struct CallFrame {
     ret_addr: u64,
     cfa: u64,
     poisoned: bool,
+    /// Frame de un handler: al volver, el proceso retoma donde lo interrumpió la señal.
+    signal: Option<i32>,
+}
+
+/// Lo que interrumpió una señal con handler, para retomarlo al volver.
+#[derive(Clone)]
+struct HandlerCtx {
+    sig: i32,
+    regs: Regs,
+    at: At,
+    last: Option<Stop>,
 }
 
 /// Llamada a biblioteca en curso: el breakpoint en `ret_addr` marca su fin.
@@ -268,6 +295,10 @@ struct Proc {
     mem: Option<String>,
     output_bytes: u64,
     fds: FdTable,
+    sigs: SigState,
+    handlers: Vec<HandlerCtx>,
+    /// Máscara que pasó a sigsuspend mientras espera.
+    suspend_mask: Option<u64>,
 }
 
 impl Proc {
@@ -289,6 +320,10 @@ struct Engine<'a> {
     stdin_consumed: u64,
     procs: Vec<Proc>,
     pipes: Pipes,
+    /// alarm(): (proceso, instante del reloj virtual en que llega SIGALRM).
+    timers: Vec<(u32, u64)>,
+    injected: usize,
+    actor: Option<usize>,
     t: u64,
     clock: u64,
     cursor: usize,
@@ -368,6 +403,9 @@ impl<'a> Engine<'a> {
             mem: None,
             output_bytes: 0,
             fds: fds::std_table(),
+            sigs: SigState::default(),
+            handlers: Vec::new(),
+            suspend_mask: None,
         };
         Engine {
             debug,
@@ -378,6 +416,9 @@ impl<'a> Engine<'a> {
             stdin_consumed: 0,
             procs: vec![root],
             pipes: Pipes::default(),
+            timers: Vec::new(),
+            injected: 0,
+            actor: None,
             t: 0,
             clock: 0,
             cursor: 0,
@@ -423,7 +464,10 @@ impl<'a> Engine<'a> {
             if self.procs.iter().all(|p| !p.alive()) {
                 return End::Done;
             }
+            self.inject();
+            self.fire_timers();
             self.wake_sleepers();
+            self.wake_signals();
             let choices = self.runnable();
             let Some(i) = self.pick() else {
                 if let Some(end) = self.idle() {
@@ -440,14 +484,20 @@ impl<'a> Engine<'a> {
                     func: s.func.clone(),
                 });
             self.clock += STEP_MS;
-            match self.advance(i) {
+            self.actor = Some(i);
+            let result = self.advance(i);
+            self.actor = None;
+            match result {
                 Ok(Some((regs, line))) => self.capture(i, &regs, line),
                 Ok(None) | Err(Halt::Exec) => {}
                 Err(Halt::Blocked(reason)) => self.block(i, reason),
                 Err(Halt::Exited(status)) => self.on_exit(i, status),
+                Err(Halt::Paused) => self.capture_in_call(i),
+                Err(Halt::Diverted) => unreachable!("advance sigue por el handler"),
                 Err(Halt::End(end)) => return end,
             }
             self.wake_io();
+            self.wake_signals();
             self.commit(Some(i), executed, choices);
             self.cursor = i;
         }
@@ -469,6 +519,7 @@ impl<'a> Engine<'a> {
             ret_addr,
             cfa,
             poisoned: true,
+            signal: None,
         });
         memory::poison_locals(self.debug, &p.tracee, main_idx, cfa);
         let line = self
@@ -513,10 +564,13 @@ impl<'a> Engine<'a> {
                 PState::Blocked(BlockReason::Sleep { until }) => Some(until),
                 _ => None,
             })
+            .chain(self.timers.iter().map(|(_, at)| *at))
             .min();
         if let Some(until) = wake {
             self.clock = self.clock.max(until);
+            self.fire_timers();
             self.wake_sleepers();
+            self.wake_signals();
             self.commit(None, None, Vec::new());
             return None;
         }
@@ -537,6 +591,121 @@ impl<'a> Engine<'a> {
             })
             .collect();
         Some(End::Deadlock(tasks))
+    }
+
+    /// Procesos que alcanza un kill: un PID, el propio grupo (0), todos (-1) o un grupo (< -1).
+    fn targets(&self, i: usize, target: i32) -> Vec<usize> {
+        let alive = |p: &Proc| p.alive();
+        match target {
+            t if t > 0 => self
+                .index_of(t as u32)
+                .filter(|&k| alive(&self.procs[k]))
+                .into_iter()
+                .collect(),
+            0 => {
+                let g = self.procs[i].pgid;
+                (0..self.procs.len())
+                    .filter(|&k| alive(&self.procs[k]) && self.procs[k].pgid == g)
+                    .collect()
+            }
+            -1 => (0..self.procs.len()).filter(|&k| alive(&self.procs[k])).collect(),
+            t => (0..self.procs.len())
+                .filter(|&k| alive(&self.procs[k]) && self.procs[k].pgid == t.unsigned_abs())
+                .collect(),
+        }
+    }
+
+    /// Registra un envío: el kernel ya lo hizo (o el tracer lo hace aquí), la entrega llega cuando
+    /// el destino vuelva a avanzar. SIGKILL no espera: el destino muere de inmediato.
+    fn signal_sent(&mut self, from: SignalSource, targets: Vec<usize>, to: i32, sig: i32) {
+        if sig == 0 {
+            return;
+        }
+        self.events.push(Event::SignalSend {
+            from: from.clone(),
+            to,
+            signal: signals::name(sig),
+        });
+        for k in targets {
+            if sig == libc::SIGKILL {
+                let vpid = self.procs[k].vpid;
+                self.events.push(Event::SignalDeliver {
+                    pid: vpid,
+                    tid: vpid,
+                    signal: "SIGKILL".into(),
+                    action: DeliverAction::Terminate,
+                    handler: None,
+                });
+                if k != self.cursor_actor() {
+                    let pid = self.procs[k].pid;
+                    loop {
+                        match waitpid(pid, Some(WaitPidFlag::__WALL)) {
+                            Ok(st @ (WaitStatus::Exited(..) | WaitStatus::Signaled(..))) => {
+                                self.on_exit(k, st);
+                                break;
+                            }
+                            Ok(_) => {}
+                            Err(_) => break,
+                        }
+                    }
+                }
+                continue;
+            }
+            self.procs[k].sigs.push(sig, from.clone());
+        }
+    }
+
+    /// El proceso que está avanzando en este paso (sus paradas las espera su propio bucle).
+    fn cursor_actor(&self) -> usize {
+        self.actor.unwrap_or(usize::MAX)
+    }
+
+    /// Ctrl+C (u otra señal de la terminal) al grupo en primer plano, justo después del paso t.
+    fn inject(&mut self) {
+        while let Some(&(t, sig)) = self.opts.injections.get(self.injected) {
+            if t != self.t {
+                break;
+            }
+            self.injected += 1;
+            let targets = self.targets(0, -(VPID as i32));
+            for &k in &targets {
+                let _ = nix::sys::signal::kill(self.procs[k].pid, Signal::try_from(sig).ok());
+            }
+            self.signal_sent(SignalSource::Terminal, targets, -(VPID as i32), sig);
+        }
+    }
+
+    fn fire_timers(&mut self) {
+        let due: Vec<u32> = self
+            .timers
+            .iter()
+            .filter(|(_, at)| *at <= self.clock)
+            .map(|(p, _)| *p)
+            .collect();
+        self.timers.retain(|(_, at)| *at > self.clock);
+        for vpid in due {
+            if let Some(k) = self.index_of(vpid) {
+                let _ = nix::sys::signal::kill(self.procs[k].pid, Signal::SIGALRM);
+                self.signal_sent(SignalSource::Timer { pid: vpid }, vec![k], vpid as i32, libc::SIGALRM);
+            }
+        }
+    }
+
+    /// Una señal que se entregará despierta a quien espera: al reanudarse, el kernel interrumpe la
+    /// espera (EINTR) y corre el handler o termina al proceso.
+    fn wake_signals(&mut self) {
+        for i in 0..self.procs.len() {
+            let p = &self.procs[i];
+            if !matches!(p.state, PState::Blocked(_)) {
+                continue;
+            }
+            let suspend = matches!(p.state, PState::Blocked(BlockReason::Sigsuspend))
+                .then_some(p.suspend_mask)
+                .flatten();
+            if p.sigs.interrupts(suspend) {
+                self.unblock(i);
+            }
+        }
     }
 
     fn wake_sleepers(&mut self) {
@@ -631,12 +800,21 @@ impl<'a> Engine<'a> {
                 return Ok(None);
             }
             At::Lib(call) => {
-                self.finish_call(i, *call)?;
-                return self.step_lines(i, true).map(Some);
+                let r = self.finish_call(i, *call).and_then(|_| self.step_lines(i, true));
+                return self.follow_handlers(i, r).map(Some);
             }
             At::User => {}
         }
-        self.step_lines(i, false).map(Some)
+        let r = self.step_lines(i, false);
+        self.follow_handlers(i, r).map(Some)
+    }
+
+    /// Si una señal desvió al proceso a su handler, el paso sigue por las líneas del handler.
+    fn follow_handlers(&mut self, i: usize, mut r: Res<(Regs, u32)>) -> Res<(Regs, u32)> {
+        while let Err(Halt::Diverted) = r {
+            r = self.step_lines(i, false);
+        }
+        r
     }
 
     /// Singlestep hasta la siguiente línea. `check_first`: la posición actual ya puede ser una
@@ -674,6 +852,9 @@ impl<'a> Engine<'a> {
             {
                 let f = self.procs[i].calls.pop().unwrap();
                 self.return_event(i, f.func, &regs);
+                if f.signal.is_some() {
+                    return self.leave_handler(i);
+                }
                 if self.procs[i].calls.is_empty() {
                     self.procs[i].at = At::Exiting;
                     self.free_run(i, false)?;
@@ -698,6 +879,7 @@ impl<'a> Engine<'a> {
                             ret_addr,
                             cfa: regs.sp() + 8,
                             poisoned: false,
+                            signal: None,
                         });
                         continue;
                     }
@@ -793,13 +975,121 @@ impl<'a> Engine<'a> {
     /// Señal en espera de entrega. Las que por omisión se ignoran se reinyectan; el resto (SIGSEGV,
     /// SIGFPE, SIGABRT…) mata al proceso.
     fn signal_stop(&mut self, i: usize, sig: Signal) -> Res<()> {
-        match sig {
-            Signal::SIGCHLD | Signal::SIGWINCH | Signal::SIGURG | Signal::SIGCONT => {
+        let s = sig as i32;
+        let vpid = self.procs[i].vpid;
+        let known = self.procs[i].sigs.take(s).is_some();
+        let deliver = |action, handler| Event::SignalDeliver {
+            pid: vpid,
+            tid: vpid,
+            signal: sig.as_str().into(),
+            action,
+            handler,
+        };
+        match self.procs[i].sigs.actions.get(&s).cloned() {
+            Some(Action::Handler(name)) if self.procs[i].user_image() && !matches!(self.procs[i].at, At::Exiting) => {
+                self.events.push(deliver(DeliverAction::Handler, Some(name)));
+                self.enter_handler(i, sig)
+            }
+            Some(Action::Handler(name)) => {
+                self.events.push(deliver(DeliverAction::Handler, Some(name)));
                 self.procs[i].sig = Some(sig);
                 Ok(())
             }
-            Signal::SIGSTOP | Signal::SIGTSTP | Signal::SIGTTIN | Signal::SIGTTOU => Ok(()),
-            _ => Err(self.deliver_fatal(i, sig)),
+            Some(Action::Ignore) => {
+                if known {
+                    self.events.push(deliver(DeliverAction::Ignore, None));
+                }
+                self.procs[i].sig = Some(sig);
+                Ok(())
+            }
+            None if signals::default_ignored(s) => {
+                self.procs[i].sig = Some(sig);
+                Ok(())
+            }
+            None if signals::job_control(s) => Ok(()),
+            None => Err(self.deliver_fatal(i, sig)),
+        }
+    }
+
+    /// Entrega con handler: un singlestep con la señal deja al proceso en la primera instrucción
+    /// del handler. Se guarda lo interrumpido para retomarlo al volver.
+    fn enter_handler(&mut self, i: usize, sig: Signal) -> Res<()> {
+        let pid = self.procs[i].pid;
+        let regs = Regs::get(pid).map_err(|_| lost())?;
+        ptrace::step(pid, sig).map_err(|_| lost())?;
+        match self.wait(i)? {
+            WaitStatus::Stopped(_, Signal::SIGTRAP) => {}
+            WaitStatus::Stopped(_, other) => self.procs[i].sig = Some(other),
+            _ => {}
+        }
+        let hregs = Regs::get(pid).map_err(|_| lost())?;
+        let Some(fi) = self.debug.functions.iter().position(|f| f.low == hregs.pc()) else {
+            return Ok(());
+        };
+        let p = &mut self.procs[i];
+        let ret_addr = p.tracee.read_u64(hregs.sp()).unwrap_or(0);
+        p.calls.push(CallFrame {
+            func: fi,
+            ret_addr,
+            cfa: hregs.sp() + 8,
+            poisoned: false,
+            signal: Some(sig as i32),
+        });
+        p.handlers.push(HandlerCtx {
+            sig: sig as i32,
+            regs,
+            at: p.at.clone(),
+            last: p.last.clone(),
+        });
+        p.at = At::User;
+        Err(Halt::Diverted)
+    }
+
+    /// El handler volvió a su trampolín de libc: se corre hasta que rt_sigreturn restaura lo
+    /// interrumpido.
+    fn leave_handler(&mut self, i: usize) -> Res<(Regs, u32)> {
+        let pid = self.procs[i].pid;
+        loop {
+            self.resume_syscall(i)?;
+            match self.wait(i)? {
+                WaitStatus::PtraceSyscall(_) => {
+                    let info = ptrace::syscall_info(pid).map_err(|_| lost())?;
+                    let returning = matches!(self.procs[i].sys, Some((nr, _)) if nr == arch::SYS_RT_SIGRETURN);
+                    if info.op == libc::PTRACE_SYSCALL_INFO_EXIT && returning {
+                        self.procs[i].sys = None;
+                        break;
+                    }
+                    self.syscall_stop(i)?;
+                }
+                WaitStatus::PtraceEvent(_, _, ev) => self.ptrace_event(i, ev)?,
+                WaitStatus::Stopped(_, Signal::SIGTRAP) => {}
+                WaitStatus::Stopped(_, s) => self.signal_stop(i, s)?,
+                _ => {}
+            }
+        }
+        let p = &mut self.procs[i];
+        let Some(ctx) = p.handlers.pop() else {
+            return Err(lost());
+        };
+        p.last = ctx.last;
+        p.at = ctx.at;
+        self.events.push(Event::SignalReturn {
+            pid: p.vpid,
+            tid: p.vpid,
+            signal: signals::name(ctx.sig),
+        });
+        if matches!(p.at, At::Lib(_)) {
+            return Err(Halt::Paused);
+        }
+        let regs = Regs::get(pid).map_err(|_| lost())?;
+        match self
+            .debug
+            .line_of(regs.pc())
+            .filter(|_| self.debug.function_at(regs.pc()).is_some())
+        {
+            Some(line) => Ok((regs, line)),
+            // Interrumpido en la PLT: se sigue hasta la próxima línea.
+            None => Err(Halt::Diverted),
         }
     }
 
@@ -1133,7 +1423,17 @@ impl<'a> Engine<'a> {
                 Ok(())
             }
             arch::SYS_PAUSE => Err(Halt::Blocked(BlockReason::Pause)),
-            arch::SYS_RT_SIGSUSPEND => Err(Halt::Blocked(BlockReason::Sigsuspend)),
+            arch::SYS_RT_SIGSUSPEND => {
+                self.procs[i].suspend_mask = self.procs[i].tracee.read_u64(args[0]);
+                Err(Halt::Blocked(BlockReason::Sigsuspend))
+            }
+            // alarm usa el reloj virtual: el tracer envía SIGALRM cuando el reloj llega a su hora.
+            arch::SYS_ALARM => {
+                let pid = self.procs[i].pid;
+                let mut regs = Regs::get(pid).map_err(|_| lost())?;
+                regs.skip_syscall();
+                regs.set(pid).map_err(|_| lost())
+            }
             // El reloj es virtual: la espera no ocurre en el kernel, el proceso queda bloqueado
             // hasta que el reloj llegue a su hora.
             arch::SYS_NANOSLEEP | arch::SYS_CLOCK_NANOSLEEP => {
@@ -1202,7 +1502,53 @@ impl<'a> Engine<'a> {
             arch::SYS_READ | arch::SYS_READV | arch::SYS_WRITE | arch::SYS_WRITEV => {
                 return Ok(self.io_exit(i, nr, args, ret));
             }
+            arch::SYS_ALARM => {
+                let vpid = self.procs[i].vpid;
+                let left = self
+                    .timers
+                    .iter()
+                    .find(|(p, _)| *p == vpid)
+                    .map_or(0, |(_, at)| at.saturating_sub(self.clock).div_ceil(1000));
+                self.timers.retain(|(p, _)| *p != vpid);
+                if args[0] > 0 {
+                    self.timers.push((vpid, self.clock + args[0] * 1000));
+                }
+                rewrite(left)?
+            }
             _ if ret < 0 => return Ok(false),
+            arch::SYS_KILL | arch::SYS_TKILL | arch::SYS_TGKILL => {
+                let (target, sig, via) = match nr {
+                    arch::SYS_KILL => (args[0] as i32, args[1] as i32, SignalVia::Kill),
+                    arch::SYS_TKILL => (args[0] as i32, args[1] as i32, SignalVia::Raise),
+                    _ => (args[0] as i32, args[2] as i32, SignalVia::Raise),
+                };
+                let target = if nr == arch::SYS_KILL || target != self.procs[i].pid.as_raw() {
+                    target
+                } else {
+                    vpid as i32
+                };
+                self.signal_sent(
+                    SignalSource::Process { pid: vpid, via },
+                    self.targets(i, target),
+                    target,
+                    sig,
+                );
+            }
+            arch::SYS_RT_SIGACTION if args[1] != 0 => {
+                let handler = self.procs[i].tracee.read_u64(args[1]).unwrap_or(0);
+                let debug = self.debug;
+                self.procs[i].sigs.set_action(args[0] as i32, handler, |addr| {
+                    debug
+                        .functions
+                        .iter()
+                        .find(|f| f.low == addr)
+                        .map_or_else(|| hex(addr), |f| f.name.clone())
+                });
+            }
+            arch::SYS_RT_SIGPROCMASK if args[1] != 0 => {
+                let set = self.procs[i].tracee.read_u64(args[1]).unwrap_or(0);
+                self.procs[i].sigs.set_mask(args[0] as i32, set);
+            }
             arch::SYS_PIPE | arch::SYS_PIPE2 => {
                 let Some(b) = self.procs[i].tracee.read(args[0], 8) else {
                     return Ok(false);
@@ -1563,6 +1909,9 @@ impl<'a> Engine<'a> {
             mem: None,
             output_bytes: 0,
             fds: p.fds.clone(),
+            sigs: p.sigs.for_child(),
+            handlers: p.handlers.clone(),
+            suspend_mask: None,
         };
         let parent = p.vpid;
         self.procs.push(c);
@@ -1596,6 +1945,8 @@ impl<'a> Engine<'a> {
         p.maps = p.tracee.maps();
         p.heap = Heap::default();
         fds::close_on_exec(&mut p.fds);
+        p.sigs.exec();
+        p.handlers.clear();
         p.calls.clear();
         p.last = None;
         p.mem = None;
@@ -1683,6 +2034,8 @@ impl<'a> Engine<'a> {
         let mem = self.final_memory(i, t);
         let p = &mut self.procs[i];
         p.exit = Some(exit);
+        p.sigs = SigState::default();
+        p.handlers.clear();
         p.fds.clear();
         p.at = At::User;
         // Un huérfano lo recoge init de inmediato.
@@ -1713,6 +2066,25 @@ impl<'a> Engine<'a> {
         }
         if let Some(parent) = self.procs[i].vfork_parent.take() {
             self.release_vfork_parent(parent);
+        }
+        self.timers.retain(|(p, _)| *p != vpid);
+        // El kernel avisa al padre con SIGCHLD; solo se dibuja si el padre lo atiende.
+        if let Some(pi) = self.procs[i].ppid.and_then(|pp| self.index_of(pp))
+            && self.procs[pi].alive()
+            && matches!(
+                self.procs[pi].sigs.actions.get(&libc::SIGCHLD),
+                Some(Action::Handler(_))
+            )
+        {
+            let to = self.procs[pi].vpid;
+            self.signal_sent(
+                SignalSource::Kernel {
+                    cause: KernelCause::Sigchld,
+                },
+                vec![pi],
+                to as i32,
+                libc::SIGCHLD,
+            );
         }
         if let Some(pi) = self.procs[i].ppid.and_then(|pp| self.index_of(pp))
             && let PState::Blocked(BlockReason::Wait { target }) = self.procs[pi].state
@@ -1759,15 +2131,38 @@ impl<'a> Engine<'a> {
     fn capture(&mut self, i: usize, regs: &Regs, line: u32) {
         let t = if self.steps.is_empty() { 0 } else { self.t + 1 };
         let p = &self.procs[i];
-        let frames = memory::unwind(self.debug, &p.tracee, regs, line);
+        let mut frames = memory::unwind(self.debug, &p.tracee, regs, line);
         let func = frames
             .first()
             .map(|f| self.debug.functions[f.func].name.clone())
             .unwrap_or_default();
-        let snap = {
+        // Debajo de cada handler, la pila que la señal interrumpió.
+        let mut marks = Vec::new();
+        for h in p.handlers.iter().rev() {
+            marks.push((frames.len(), signals::name(h.sig)));
+            let (r, l) = match &h.at {
+                At::Lib(call) => {
+                    let mut r = call.regs;
+                    r.set_pc(call.ret_addr - 1);
+                    (r, self.debug.line_of(call.ret_addr - 1).unwrap_or(0))
+                }
+                _ => (h.regs, h.last.as_ref().map_or(0, |s| s.line)),
+            };
+            frames.extend(memory::unwind(self.debug, &p.tracee, &r, l));
+        }
+        let mut snap = {
             let mut reader = Reader::new(self.debug, &p.tracee, &p.heap, self.binary_path.clone(), p.maps.clone());
             reader.snapshot(&frames, p.vpid, t)
         };
+        if let Some(stack) = snap.stacks.get_mut(&p.vpid) {
+            let mut from = 0;
+            for (end, sig) in marks {
+                for f in stack.iter_mut().take(end).skip(from) {
+                    f.signal = Some(sig.clone());
+                }
+                from = end;
+            }
+        }
         let mem = self.snapshot_id(snap);
         let p = &mut self.procs[i];
         p.mem = Some(mem);
@@ -1840,11 +2235,7 @@ impl<'a> Engine<'a> {
             image: p.image.clone(),
             exit: p.exit.clone(),
             fds: if p.alive() { p.fds.clone() } else { BTreeMap::new() },
-            signals: ProcessSignals {
-                mask: Vec::new(),
-                pending: Vec::new(),
-                actions: BTreeMap::new(),
-            },
+            signals: p.sigs.view(),
             threads: vec![Thread {
                 tid: p.vpid,
                 main: true,
@@ -1855,7 +2246,7 @@ impl<'a> Engine<'a> {
                 blocked_on,
                 start: None,
                 holds: Vec::new(),
-                in_handler: None,
+                in_handler: p.handlers.last().filter(|_| p.alive()).map(|h| signals::name(h.sig)),
                 retval: None,
             }],
             mem: if p.state == PState::Reaped { None } else { p.mem.clone() },
@@ -1879,8 +2270,16 @@ impl<'a> Engine<'a> {
             processes,
             pipes: self.pipe_view(),
             stdin: self.stdin_state(),
-            signals: Vec::new(),
-            timers: Vec::new(),
+            signals: self.procs.iter().flat_map(|p| p.sigs.in_flight(p.vpid)).collect(),
+            timers: self
+                .timers
+                .iter()
+                .map(|(pid, at)| Timer {
+                    pid: *pid,
+                    signal: "SIGALRM".into(),
+                    fire_at: *at,
+                })
+                .collect(),
             sync: Vec::new(),
         });
         self.t = t;

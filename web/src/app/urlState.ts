@@ -6,6 +6,7 @@ export interface UrlState {
   code?: string;
   stdin?: string;
   eof?: boolean;
+  ctrlc?: number[]; // pasos después de los cuales se presionó Ctrl+C
   t: number;
 }
 
@@ -22,6 +23,8 @@ export async function readHash(): Promise<UrlState> {
     // Un enlace dañado no debe impedir abrir la aplicación.
   }
   state.eof = params.get('eof') === '1';
+  const ctrlc = (params.get('ctrlc') ?? '').split(',').filter(Boolean).map(Number).filter((n) => Number.isInteger(n) && n >= 0);
+  if (ctrlc.length > 0) state.ctrlc = ctrlc;
   return state;
 }
 
@@ -32,6 +35,7 @@ export async function writeHash(s: UrlState): Promise<void> {
   if (s.code !== undefined) params.set('codigo', await deflate(s.code));
   if (s.stdin) params.set('stdin', await deflate(s.stdin));
   if (s.eof) params.set('eof', '1');
+  if (s.ctrlc && s.ctrlc.length > 0) params.set('ctrlc', s.ctrlc.join(','));
   params.set('t', String(s.t));
   const hash = '#' + params.toString();
   if (window.location.hash !== hash) window.history.replaceState(null, '', hash);

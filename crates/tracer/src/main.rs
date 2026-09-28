@@ -7,7 +7,9 @@ use pss_tracer::{limits, tracer};
 use std::io::Write;
 
 fn usage() -> ! {
-    eprintln!("uso: pss-tracer --source prog.c [--stdin archivo] [--stdin-eof] [--limits archivo] [--out archivo]");
+    eprintln!(
+        "uso: pss-tracer --source prog.c [--stdin archivo] [--stdin-eof] [--limits archivo] [--inject t:SIGINT] [--out archivo]"
+    );
     std::process::exit(2);
 }
 
@@ -17,6 +19,7 @@ fn main() {
     let mut stdin_eof = false;
     let mut limits = limits::Limits::default();
     let mut out = None;
+    let mut injections = Vec::new();
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -32,6 +35,10 @@ fn main() {
                 limits = limits::Limits::parse(&text).unwrap_or_else(|e| fail(&e));
             }
             "--out" => out = Some(args.next().unwrap_or_else(|| usage())),
+            "--inject" => {
+                let spec = args.next().unwrap_or_else(|| usage());
+                injections.push(parse_injection(&spec).unwrap_or_else(|| fail(&format!("inyección inválida: {spec}"))));
+            }
             _ => usage(),
         }
     }
@@ -42,6 +49,7 @@ fn main() {
         stdin,
         stdin_eof,
         limits,
+        injections,
     });
     let json = serde_json::to_string(&trace).unwrap();
     match out {
@@ -51,6 +59,13 @@ fn main() {
             let _ = stdout.write_all(json.as_bytes());
         }
     }
+}
+
+/// `12:SIGINT`: después del paso 12, la terminal envía SIGINT al grupo en primer plano.
+fn parse_injection(spec: &str) -> Option<(u64, i32)> {
+    let (t, sig) = spec.split_once(':')?;
+    let sig: nix::sys::signal::Signal = sig.parse().ok()?;
+    Some((t.parse().ok()?, sig as i32))
 }
 
 fn fail(msg: &str) -> ! {

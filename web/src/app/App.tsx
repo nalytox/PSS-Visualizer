@@ -21,6 +21,7 @@ interface Doc {
   source: string;
   stdin: string;
   stdinEof: boolean;
+  ctrlc?: number[]; // Ctrl+C presionado después de estos pasos
   example?: string; // id del ejemplo si no se ha modificado
 }
 
@@ -43,10 +44,10 @@ export function App() {
 }
 
 function docFromUrl(u: UrlState): Doc {
-  if (u.code !== undefined) return { source: u.code, stdin: u.stdin ?? '', stdinEof: !!u.eof };
+  if (u.code !== undefined) return { source: u.code, stdin: u.stdin ?? '', stdinEof: !!u.eof, ctrlc: u.ctrlc };
   const ex = examples.find((e) => e.id === u.example) ?? examples[0];
   if (!ex) return { source: blankProgram, stdin: '', stdinEof: true };
-  return { source: ex.source, stdin: ex.stdin, stdinEof: false, example: ex.id };
+  return { source: ex.source, stdin: ex.stdin, stdinEof: false, example: ex.id, ctrlc: u.ctrlc };
 }
 
 function Workspace({ initial }: { initial: UrlState }) {
@@ -90,7 +91,8 @@ function Workspace({ initial }: { initial: UrlState }) {
       }
       setRunning(true);
       try {
-        const trace = await runProgram({ source: d.source, stdin: d.stdin, stdinEof: d.stdinEof });
+        const injections = (d.ctrlc ?? []).map((t) => ({ t, signal: 'SIGINT' }));
+        const trace = await runProgram({ source: d.source, stdin: d.stdin, stdinEof: d.stdinEof, injections });
         if (trace.outcome.kind === 'compileError' || trace.steps.length === 0) {
           setDiagnostics(trace.compile.diagnostics);
           setMode('edit');
@@ -131,7 +133,7 @@ function Workspace({ initial }: { initial: UrlState }) {
     run(d);
   };
 
-  const edit = (patch: Partial<Doc>) => setDoc((d) => ({ ...d, ...patch, example: undefined }));
+  const edit = (patch: Partial<Doc>) => setDoc((d) => ({ ...d, ...patch, example: undefined, ctrlc: undefined }));
   const pickValue = loaded?.recorded && !examples.some((e) => e.id === loaded.recorded) ? `tr:${loaded.recorded}` : doc.example ? `ej:${doc.example}` : 'ej:';
   const stale = !!loaded && !loaded.recorded && loaded.trace.source !== doc.source;
 
@@ -158,6 +160,15 @@ function Workspace({ initial }: { initial: UrlState }) {
       setDoc(d);
       run(d, t);
     },
+    // Ctrl+C en el paso t: se vuelve a ejecutar con SIGINT después de t (lo anterior no cambia).
+    onCtrlC:
+      server === 'ready'
+        ? (t: number) => {
+            const d = { ...doc, ctrlc: [...(doc.ctrlc ?? []).filter((x) => x < t), t] };
+            setDoc(d);
+            run(d, t + 1);
+          }
+        : undefined,
   };
   if (loaded) return <WithTrace key={loaded.key} loaded={loaded} {...shared} />;
   return <WithoutTrace {...shared} />;
@@ -178,6 +189,7 @@ interface Shared {
   onEditMode: () => void;
   onMoreInput: (text: string, t: number) => void;
   onEof: (t: number) => void;
+  onCtrlC?: (t: number) => void;
 }
 
 function WithTrace(props: Shared & { loaded: Loaded }) {
@@ -190,9 +202,10 @@ function WithTrace(props: Shared & { loaded: Loaded }) {
   const step = trace.steps[t];
 
   useEffect(() => {
+    const ctrlc = trace.run.injections.map((i) => i.t);
     if (loaded.recorded) writeHash({ trace: loaded.recorded, t });
-    else if (doc.example && doc.source === trace.source) writeHash({ example: doc.example, t });
-    else writeHash({ code: trace.source, stdin: trace.stdin, eof: trace.run.stdinEof, t });
+    else if (doc.example && doc.source === trace.source) writeHash({ example: doc.example, ctrlc, t });
+    else writeHash({ code: trace.source, stdin: trace.stdin, eof: trace.run.stdinEof, ctrlc, t });
   }, [loaded.recorded, doc.example, doc.source, trace, t]);
 
   const marks: CodeMarks = useMemo(() => {
@@ -246,7 +259,7 @@ function WithTrace(props: Shared & { loaded: Loaded }) {
       }
       footer={
         <>
-          <Controls player={player} index={index} />
+          <Controls player={player} index={index} onCtrlC={props.onCtrlC && !props.running ? () => props.onCtrlC!(player.t) : undefined} />
           <Timeline trace={trace} index={index} player={player} />
         </>
       }

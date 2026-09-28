@@ -5,6 +5,7 @@ export interface RunRequest {
   source: string;
   stdin: string;
   stdinEof: boolean;
+  injections?: { t: number; signal: string }[];
 }
 
 export async function serverAvailable(): Promise<boolean> {

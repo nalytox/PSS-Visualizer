@@ -20,6 +20,7 @@ fn trace_example(name: &str) -> serde_json::Value {
         stdin,
         stdin_eof: false,
         limits,
+        injections: vec![],
     });
     serde_json::to_value(&trace).unwrap()
 }
@@ -203,6 +204,75 @@ fn pipeline_connects_three_black_boxes() {
 }
 
 #[test]
+fn sigusr1_runs_the_handler_in_the_child() {
+    let t = check("09_sigusr1");
+    let send = events_of(&t, "signalSend");
+    assert_eq!(send.len(), 1);
+    assert_eq!(
+        send[0]["from"],
+        serde_json::json!({"kind": "process", "pid": 1000, "via": "kill"})
+    );
+    let deliver = events_of(&t, "signalDeliver");
+    assert_eq!(deliver[0]["handler"], "manejador");
+    // Durante el handler, la pila muestra el handler encima de main.
+    let step = t["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["processes"][1]["threads"][0]["inHandler"] == "SIGUSR1")
+        .unwrap();
+    let mem = step["processes"][1]["mem"].as_str().unwrap();
+    let frames = t["snapshots"][mem]["stacks"]["1001"].as_array().unwrap();
+    assert_eq!(frames[0]["fn"], "manejador");
+    assert_eq!(frames[0]["signal"], "SIGUSR1");
+    assert_eq!(frames.last().unwrap()["fn"], "main");
+    assert!(frames.last().unwrap().get("signal").is_none());
+    assert_eq!(events_of(&t, "signalReturn").len(), 1);
+}
+
+#[test]
+fn sigchld_comes_from_the_kernel_and_the_handler_reaps() {
+    let t = check("10_sigchld");
+    let send = events_of(&t, "signalSend");
+    assert_eq!(
+        send[0]["from"],
+        serde_json::json!({"kind": "kernel", "cause": "SIGCHLD"})
+    );
+    assert_eq!(events_of(&t, "wait")[0]["reaped"], 1001);
+    assert_eq!(outputs(&t).last().unwrap().1, "padre: termino\n");
+}
+
+#[test]
+fn ctrl_c_is_injected_after_the_chosen_step() {
+    let t = check("11_sigint");
+    assert_eq!(
+        outputs(&t),
+        [(1000, "llegu\u{c3}\u{a9} a 10 sin interrupciones\n".to_string())]
+    );
+    let dir = root().join("examples");
+    let trace = run(&Options {
+        source: std::fs::read_to_string(dir.join("11_sigint.c")).unwrap(),
+        stdin: vec![],
+        stdin_eof: false,
+        limits: Limits::default(),
+        injections: vec![(12, libc_sigint())],
+    });
+    let v = serde_json::to_value(&trace).unwrap();
+    assert_eq!(outputs(&v), [(1000, "me interrumpiste en la vuelta 2\n".to_string())]);
+    assert_eq!(
+        v["run"]["injections"][0],
+        serde_json::json!({"t": 12, "signal": "SIGINT", "target": "foreground"})
+    );
+    assert_eq!(v["steps"][13]["events"][0]["from"]["kind"], "terminal");
+    // Hasta el paso 12 la traza es la misma que sin Ctrl+C.
+    assert_eq!(v["steps"][12], t["steps"][12]);
+}
+
+fn libc_sigint() -> i32 {
+    2
+}
+
+#[test]
 fn same_input_gives_the_same_trace() {
     assert_eq!(trace_example("02_lista_enlazada"), trace_example("02_lista_enlazada"));
     assert_eq!(trace_example("04_fork_bucle"), trace_example("04_fork_bucle"));
@@ -215,6 +285,7 @@ fn compile_errors_come_back_with_their_line() {
         stdin: vec![],
         stdin_eof: true,
         limits: Limits::default(),
+        injections: vec![],
     });
     assert!(matches!(t.outcome, trace_model::Outcome::CompileError));
     assert!(
@@ -236,6 +307,7 @@ fn infinite_loops_are_truncated() {
         stdin: vec![],
         stdin_eof: true,
         limits,
+        injections: vec![],
     });
     assert!(
         t.truncated,
@@ -256,6 +328,7 @@ fn segfault_is_reported() {
         stdin: vec![],
         stdin_eof: true,
         limits: Limits::default(),
+        injections: vec![],
     });
     assert!(
         matches!(&t.outcome, trace_model::Outcome::Signaled { signal } if signal == "SIGSEGV"),
@@ -275,6 +348,7 @@ fn output_before_exit_is_captured_and_attributed() {
         stdin: vec![],
         stdin_eof: true,
         limits: Limits::default(),
+        injections: vec![],
     });
     let all: String = t.output.iter().map(|c| c.bytes.clone()).collect();
     assert_eq!(all, "ab\n");
@@ -296,6 +370,9 @@ fn every_reference_trace_matches_the_schema() {
         "06_pipe_padre_hijo",
         "07_pipe_sin_cerrar",
         "08_pipeline",
+        "09_sigusr1",
+        "10_sigchld",
+        "11_sigint",
     ] {
         let t = trace_example(name);
         let errors: Vec<String> = validator.iter_errors(&t).take(3).map(|e| e.to_string()).collect();

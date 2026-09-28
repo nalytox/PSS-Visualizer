@@ -470,7 +470,8 @@ button:disabled {
   color: #1f1a2e;
 }
 
-.thread-step {
+.thread-step,
+.ctrl-c {
   display: inline-flex;
   width: auto;
   gap: 6px;
@@ -483,6 +484,23 @@ button:disabled {
 
 .thread-step:hover:not(:disabled) {
   background: var(--surface-2);
+}
+
+.ctrl-c {
+  align-items: center;
+  height: 36px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--sig-user) 30%, var(--surface));
+  cursor: pointer;
+}
+
+.ctrl-c:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--sig-user) 50%, var(--surface));
+}
+
+.ctrl-c:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .speed {

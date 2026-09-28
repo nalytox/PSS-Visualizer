@@ -1,9 +1,9 @@
 // Controles de ejecución (sección 10).
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Pause, Play, SkipBack, SkipForward, Footprints } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Pause, Play, SkipBack, SkipForward, Footprints, Zap } from 'lucide-react';
 import { threadLabel, type TraceIndex } from '../trace/query.ts';
 import { SPEEDS, type Player } from './usePlayer.ts';
 
-export function Controls({ player, index }: { player: Player; index: TraceIndex }) {
+export function Controls({ player, index, onCtrlC }: { player: Player; index: TraceIndex; onCtrlC?: () => void }) {
   const atStart = player.t === 0;
   const atEnd = player.t === player.last;
   return (
@@ -41,6 +41,17 @@ export function Controls({ player, index }: { player: Player; index: TraceIndex 
       >
         <Footprints size={16} />
         <span>{player.selectedTid !== null ? `Paso de ${threadLabel(index, player.selectedTid)} (${player.selectedTid})` : 'Paso del hilo'}</span>
+      </button>
+      <button
+        type="button"
+        className="ctrl-c"
+        onClick={onCtrlC}
+        disabled={!onCtrlC || atEnd}
+        title={onCtrlC ? 'Envía SIGINT al programa después de este paso y vuelve a ejecutarlo desde aquí' : 'Ctrl+C necesita el servidor local'}
+        aria-label="Enviar Ctrl+C"
+      >
+        <Zap size={16} />
+        <span>Ctrl+C</span>
       </button>
       <label className="speed">
         <span>Velocidad</span>

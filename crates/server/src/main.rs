@@ -72,6 +72,15 @@ struct RunRequest {
     stdin: String,
     #[serde(default)]
     stdin_eof: bool,
+    /// Señales de la terminal (Ctrl+C) que llegan después de un paso.
+    #[serde(default)]
+    injections: Vec<InjectionRequest>,
+}
+
+#[derive(Deserialize)]
+struct InjectionRequest {
+    t: u64,
+    signal: String,
 }
 
 async fn health(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
@@ -126,6 +135,18 @@ async fn run(State(state): State<Arc<AppState>>, Json(req): Json<RunRequest>) ->
         .kill_on_drop(true);
     if req.stdin_eof {
         cmd.arg("--stdin-eof");
+    }
+    for inj in req.injections.iter().take(32) {
+        let valid = inj.signal.len() <= 12
+            && inj.signal.starts_with("SIG")
+            && inj.signal[3..]
+                .chars()
+                .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit());
+        if !valid {
+            let _ = tokio::fs::remove_dir_all(&dir).await;
+            return error(StatusCode::BAD_REQUEST, "señal inválida");
+        }
+        cmd.arg("--inject").arg(format!("{}:{}", inj.t, inj.signal));
     }
     if let Some(l) = &state.limits {
         cmd.arg("--limits").arg(l);

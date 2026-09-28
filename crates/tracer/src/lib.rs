@@ -9,5 +9,6 @@ pub mod launch;
 pub mod limits;
 pub mod memory;
 pub mod process;
+pub mod signals;
 pub mod syms;
 pub mod tracer;

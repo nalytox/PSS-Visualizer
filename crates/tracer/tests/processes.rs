@@ -6,11 +6,16 @@ use pss_tracer::tracer::{Options, run};
 use trace_model::{BlockReason, Event, ExitStatus, Outcome, ProcessState, Trace};
 
 fn trace(source: &str, stdin: &str) -> Trace {
+    trace_with(source, stdin, vec![])
+}
+
+fn trace_with(source: &str, stdin: &str, injections: Vec<(u64, i32)>) -> Trace {
     run(&Options {
         source: source.into(),
         stdin: stdin.into(),
         stdin_eof: false,
         limits: Limits::default(),
+        injections,
     })
 }
 
@@ -265,4 +270,82 @@ int main(void) {
     );
     assert!(matches!(t.outcome, Outcome::Exited { code: 0 }), "{:?}", t.outcome);
     assert_eq!(output(&t), [(1000, "65636\n")]);
+}
+
+#[test]
+fn a_masked_signal_waits_until_it_is_unblocked() {
+    let t = trace(
+        r#"#include <signal.h>
+#include <stdio.h>
+#include <unistd.h>
+void h(int s) { printf("llego\n"); }
+int main(void) {
+    signal(SIGUSR1, h);
+    sigset_t m;
+    sigemptyset(&m);
+    sigaddset(&m, SIGUSR1);
+    sigprocmask(SIG_BLOCK, &m, NULL);
+    raise(SIGUSR1);
+    printf("bloqueada\n");
+    sigprocmask(SIG_UNBLOCK, &m, NULL);
+    printf("fin\n");
+    return 0;
+}
+"#,
+        "",
+    );
+    assert_eq!(output(&t), [(1000, "bloqueada\n"), (1000, "llego\n"), (1000, "fin\n")]);
+    let blocked = t
+        .steps
+        .iter()
+        .any(|s| s.signals.iter().any(|f| f.status == trace_model::SignalStatus::Blocked));
+    assert!(blocked, "la señal pendiente se ve bloqueada por la máscara");
+}
+
+#[test]
+fn alarm_fires_on_the_virtual_clock() {
+    let t = trace(
+        r#"#include <signal.h>
+#include <stdio.h>
+#include <unistd.h>
+void h(int s) { printf("alarma\n"); }
+int main(void) {
+    signal(SIGALRM, h);
+    alarm(3);
+    pause();
+    printf("despues\n");
+    return 0;
+}
+"#,
+        "",
+    );
+    assert_eq!(output(&t), [(1000, "alarma\n"), (1000, "despues\n")]);
+    assert!(events(&t).any(|e| matches!(
+        e,
+        Event::SignalSend {
+            from: trace_model::SignalSource::Timer { pid: 1000 },
+            ..
+        }
+    )));
+    assert!(t.steps.last().unwrap().clock >= 3000);
+}
+
+#[test]
+fn sigkill_ends_a_blocked_child_at_once() {
+    let t = trace(
+        r#"#include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
+int main(void) {
+    pid_t p = fork();
+    if (p == 0) { pause(); return 0; }
+    kill(p, SIGKILL);
+    int st;
+    wait(&st);
+    return WTERMSIG(st);
+}
+"#,
+        "",
+    );
+    assert!(matches!(t.outcome, Outcome::Exited { code: 9 }), "{:?}", t.outcome);
 }

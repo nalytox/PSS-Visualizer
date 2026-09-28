@@ -40,6 +40,10 @@ pub const SYS_FCNTL: u64 = libc::SYS_fcntl as u64;
 pub const SYS_CLOSE: u64 = libc::SYS_close as u64;
 pub const SYS_OPEN: u64 = libc::SYS_open as u64;
 pub const SYS_OPENAT: u64 = libc::SYS_openat as u64;
+pub const SYS_RT_SIGACTION: u64 = libc::SYS_rt_sigaction as u64;
+pub const SYS_RT_SIGPROCMASK: u64 = libc::SYS_rt_sigprocmask as u64;
+pub const SYS_RT_SIGRETURN: u64 = libc::SYS_rt_sigreturn as u64;
+pub const SYS_ALARM: u64 = libc::SYS_alarm as u64;
 pub const SYS_PAUSE: u64 = libc::SYS_pause as u64;
 pub const SYS_RT_SIGSUSPEND: u64 = libc::SYS_rt_sigsuspend as u64;
 

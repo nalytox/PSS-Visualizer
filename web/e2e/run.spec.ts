@@ -91,3 +91,15 @@ test('ls | grep c | wc -l cuenta una línea', async ({ page }) => {
   await expect(terminal(page)).toContainText('1');
   await expect(page.locator('g.proc')).toHaveCount(4);
 });
+
+test('Ctrl+C reejecuta con SIGINT desde el paso actual y el handler corta el bucle', async ({ page }) => {
+  await page.goto('/#ejemplo=11_sigint&t=12');
+  await waitForTrace(page);
+  await expect(counter(page)).toHaveText('12');
+  await page.getByRole('button', { name: 'Enviar Ctrl+C' }).click();
+  await expect(page).toHaveURL(/ctrlc=12/, { timeout: 20_000 });
+  await expect(counter(page)).toHaveText('13');
+  await expect(page.locator('.narration')).toContainText('Ctrl+C');
+  await page.keyboard.press('End');
+  await expect(terminal(page)).toContainText('me interrumpiste en la vuelta 2');
+});
