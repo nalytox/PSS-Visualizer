@@ -16,6 +16,9 @@ fn trace_with(source: &str, stdin: &str, injections: Vec<(u64, i32)>) -> Trace {
         stdin_eof: false,
         limits: Limits::default(),
         injections,
+        policy: trace_model::Policy::RoundRobin,
+        seed: 0,
+        schedule: vec![],
     })
 }
 
@@ -348,4 +351,53 @@ int main(void) {
         "",
     );
     assert!(matches!(t.outcome, Outcome::Exited { code: 9 }), "{:?}", t.outcome);
+}
+
+#[test]
+fn threads_receive_their_argument_and_return_a_value() {
+    let t = trace(
+        r#"#include <pthread.h>
+#include <stdint.h>
+#include <stdio.h>
+void *doble(void *arg) {
+    intptr_t n = (intptr_t)arg;
+    return (void *)(n * 2);
+}
+int main(void) {
+    pthread_t h;
+    void *r;
+    pthread_create(&h, NULL, doble, (void *)21);
+    pthread_join(h, &r);
+    printf("%ld\n", (long)(intptr_t)r);
+    return 0;
+}
+"#,
+        "",
+    );
+    assert_eq!(output(&t), [(1000, "42\n")]);
+    let join = events(&t).find_map(|e| match e {
+        Event::Join { target, retval, .. } => Some((*target, retval.clone())),
+        _ => None,
+    });
+    let (target, retval) = join.unwrap();
+    assert_eq!(target, 1001);
+    assert!(matches!(retval, Some(trace_model::Value::Scalar { repr: Some(r), .. }) if r == "0x2a"));
+}
+
+#[test]
+fn pthread_exit_in_main_lets_the_other_threads_finish() {
+    let t = trace(
+        r#"#include <pthread.h>
+#include <stdio.h>
+void *hola(void *arg) { printf("hilo\n"); return NULL; }
+int main(void) {
+    pthread_t h;
+    pthread_create(&h, NULL, hola, NULL);
+    pthread_exit(NULL);
+}
+"#,
+        "",
+    );
+    assert!(matches!(t.outcome, Outcome::Exited { code: 0 }), "{:?}", t.outcome);
+    assert_eq!(output(&t), [(1000, "hilo\n")]);
 }

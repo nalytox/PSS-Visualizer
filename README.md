@@ -6,10 +6,11 @@ Programación de Sistemas: `fork`, `exec`, `wait`, `pipe`, `dup2`, señales, `pt
 
 Todo corre en tu computador. No se sube código a ningún servidor.
 
-> **Estado: fase 4.** Compila y traza programas con varios procesos: `fork`, `exec` (el programa
-> cargado se ve como caja negra), `wait`, `exit`, zombies y huérfanos adoptados por `init (1)`, con
-> memoria completa (structs, arreglos, punteros, heap), pipes con `dup2` (también entre cajas negras, como `ls | wc`) señales (handlers, máscaras, SIGCHLD, alarm y Ctrl+C) y entrada estándar. Los hilos
-> llegan en la fase 5 (ver `docs/fases/`).
+> **Estado: fase 5.** Compila y traza programas con varios procesos (`fork`, `exec` como caja
+> negra, `wait`, zombies y huérfanos), pipes con `dup2`, señales (handlers, máscaras, SIGCHLD, alarm
+> y Ctrl+C) e hilos (mutex, variables de condición, semáforos, deadlock y planificación round-robin,
+> aleatoria o manual), con memoria completa y entrada estándar. Falta el modo introducción (fase 6)
+> y arm64 (fase 7); ver `docs/fases/`.
 
 ## Cómo ejecutarlo
 
@@ -51,6 +52,7 @@ el programa espera como lo haría en una terminal.
 | Reproducir / pausar | Espacio |
 | Avanzar hasta una línea | Clic en el margen del código |
 | Ctrl+C desde el paso actual (con servidor) | Botón Ctrl+C |
+| Elegir qué hilo avanza (modo manual, con servidor) | Planificación → Manual y el botón ▶ junto a cada hilo |
 
 Pasa el mouse (o navega con Tab) sobre cualquier proceso, carril, tubo, cable o señal para ver el
 detalle técnico. Al pasar sobre un nodo de un carril se muestra la memoria de ese instante. La URL

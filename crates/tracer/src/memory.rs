@@ -99,6 +99,8 @@ pub struct Reader<'a> {
     pointers: Vec<(u64, TypeId)>,
     /// Funciones del usuario por dirección, para punteros a función.
     fn_names: HashMap<u64, String>,
+    /// Pilas de los hilos (mapeos anónimos): cuentan como stack y no como memoria ajena.
+    stacks: Vec<(u64, u64)>,
 }
 
 impl<'a> Reader<'a> {
@@ -118,10 +120,18 @@ impl<'a> Reader<'a> {
             heap,
             pointers: Vec::new(),
             fn_names,
+            stacks: Vec::new(),
         }
     }
 
+    pub fn extra_stacks(&mut self, ranges: Vec<(u64, u64)>) {
+        self.stacks = ranges;
+    }
+
     fn region(&self, addr: u64) -> Region {
+        if self.stacks.iter().any(|(lo, hi)| addr >= *lo && addr < *hi) {
+            return Region::Stack;
+        }
         let Some(m) = self.maps.iter().find(|m| addr >= m.start && addr < m.end) else {
             return Region::Unmapped;
         };

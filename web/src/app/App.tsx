@@ -9,7 +9,7 @@ import { threadInk } from '../player/SceneContext.tsx';
 import { catalog } from '../trace/catalog.ts';
 import { describeStep } from '../trace/describe.ts';
 import { indexTrace, threadAt, threadLabel } from '../trace/query.ts';
-import type { Diagnostic, Trace } from '../trace/types.ts';
+import type { Diagnostic, TaskRef, Trace } from '../trace/types.ts';
 import { runProgram, serverAvailable } from './api.ts';
 import { blankProgram, examples } from './examples.ts';
 import { StdinPanel } from './StdinPanel.tsx';
@@ -17,11 +17,21 @@ import { TerminalPanel } from './TerminalPanel.tsx';
 import { readHash, writeHash, type UrlState } from './urlState.ts';
 import { useTheme } from './useTheme.ts';
 
+const newSeed = () => Math.floor(Math.random() * 1_000_000);
+
+// Quién avanzó en cada paso hasta t (los pasos del kernel no cuentan).
+function actorsUpTo(trace: Trace, t: number): TaskRef[] {
+  return trace.steps.slice(1, t + 1).flatMap((s) => (s.actor ? [s.actor] : []));
+}
+
 interface Doc {
   source: string;
   stdin: string;
   stdinEof: boolean;
   ctrlc?: number[]; // Ctrl+C presionado después de estos pasos
+  policy?: 'random' | 'manual';
+  seed?: number;
+  schedule?: TaskRef[]; // tareas elegidas a mano, paso a paso
   example?: string; // id del ejemplo si no se ha modificado
 }
 
@@ -44,10 +54,11 @@ export function App() {
 }
 
 function docFromUrl(u: UrlState): Doc {
-  if (u.code !== undefined) return { source: u.code, stdin: u.stdin ?? '', stdinEof: !!u.eof, ctrlc: u.ctrlc };
+  const plan = { ctrlc: u.ctrlc, policy: u.policy, seed: u.seed, schedule: u.schedule };
+  if (u.code !== undefined) return { source: u.code, stdin: u.stdin ?? '', stdinEof: !!u.eof, ...plan };
   const ex = examples.find((e) => e.id === u.example) ?? examples[0];
   if (!ex) return { source: blankProgram, stdin: '', stdinEof: true };
-  return { source: ex.source, stdin: ex.stdin, stdinEof: false, example: ex.id, ctrlc: u.ctrlc };
+  return { source: ex.source, stdin: ex.stdin, stdinEof: false, example: ex.id, ...plan };
 }
 
 function Workspace({ initial }: { initial: UrlState }) {
@@ -92,7 +103,15 @@ function Workspace({ initial }: { initial: UrlState }) {
       setRunning(true);
       try {
         const injections = (d.ctrlc ?? []).map((t) => ({ t, signal: 'SIGINT' }));
-        const trace = await runProgram({ source: d.source, stdin: d.stdin, stdinEof: d.stdinEof, injections });
+        const trace = await runProgram({
+          source: d.source,
+          stdin: d.stdin,
+          stdinEof: d.stdinEof,
+          injections,
+          policy: d.policy ?? 'round_robin',
+          seed: d.seed ?? 0,
+          schedule: d.policy === 'manual' ? d.schedule : undefined,
+        });
         if (trace.outcome.kind === 'compileError' || trace.steps.length === 0) {
           setDiagnostics(trace.compile.diagnostics);
           setMode('edit');
@@ -133,7 +152,7 @@ function Workspace({ initial }: { initial: UrlState }) {
     run(d);
   };
 
-  const edit = (patch: Partial<Doc>) => setDoc((d) => ({ ...d, ...patch, example: undefined, ctrlc: undefined }));
+  const edit = (patch: Partial<Doc>) => setDoc((d) => ({ ...d, ...patch, example: undefined, ctrlc: undefined, schedule: undefined }));
   const pickValue = loaded?.recorded && !examples.some((e) => e.id === loaded.recorded) ? `tr:${loaded.recorded}` : doc.example ? `ej:${doc.example}` : 'ej:';
   const stale = !!loaded && !loaded.recorded && loaded.trace.source !== doc.source;
 
@@ -169,6 +188,23 @@ function Workspace({ initial }: { initial: UrlState }) {
             run(d, t + 1);
           }
         : undefined,
+    onPolicy:
+      server === 'ready'
+        ? (policy: 'round_robin' | 'random' | 'manual', seed?: number) => {
+            const d: Doc = { ...doc, policy: policy === 'round_robin' ? undefined : policy, seed: policy === 'random' ? (seed ?? newSeed()) : undefined, schedule: undefined };
+            setDoc(d);
+            run(d, 0);
+          }
+        : undefined,
+    // Modo manual: los pasos hasta t se repiten tal cual y en t + 1 avanza la tarea elegida.
+    onChoose:
+      server === 'ready'
+        ? (t: number, actors: TaskRef[], chosen: TaskRef) => {
+            const d: Doc = { ...doc, policy: 'manual', schedule: [...actors, chosen] };
+            setDoc(d);
+            run(d, t + 1);
+          }
+        : undefined,
   };
   if (loaded) return <WithTrace key={loaded.key} loaded={loaded} {...shared} />;
   return <WithoutTrace {...shared} />;
@@ -190,6 +226,8 @@ interface Shared {
   onMoreInput: (text: string, t: number) => void;
   onEof: (t: number) => void;
   onCtrlC?: (t: number) => void;
+  onPolicy?: (policy: 'round_robin' | 'random' | 'manual', seed?: number) => void;
+  onChoose?: (t: number, actors: TaskRef[], chosen: TaskRef) => void;
 }
 
 function WithTrace(props: Shared & { loaded: Loaded }) {
@@ -202,10 +240,16 @@ function WithTrace(props: Shared & { loaded: Loaded }) {
   const step = trace.steps[t];
 
   useEffect(() => {
-    const ctrlc = trace.run.injections.map((i) => i.t);
+    const run = trace.run;
+    const plan = {
+      ctrlc: run.injections.map((i) => i.t),
+      policy: run.policy === 'round_robin' ? undefined : run.policy,
+      seed: run.seed,
+      schedule: run.policy === 'manual' ? run.schedule : undefined,
+    };
     if (loaded.recorded) writeHash({ trace: loaded.recorded, t });
-    else if (doc.example && doc.source === trace.source) writeHash({ example: doc.example, ctrlc, t });
-    else writeHash({ code: trace.source, stdin: trace.stdin, eof: trace.run.stdinEof, ctrlc, t });
+    else if (doc.example && doc.source === trace.source) writeHash({ example: doc.example, ...plan, t });
+    else writeHash({ code: trace.source, stdin: trace.stdin, eof: run.stdinEof, ...plan, t });
   }, [loaded.recorded, doc.example, doc.source, trace, t]);
 
   const marks: CodeMarks = useMemo(() => {
@@ -253,13 +297,20 @@ function WithTrace(props: Shared & { loaded: Loaded }) {
       }
       stage={
         <>
-          <Canvas trace={trace} index={index} player={player} />
+          <Canvas trace={trace} index={index} player={player} onChoose={props.onChoose && trace.run.policy === 'manual' && !props.running ? (chosen) => props.onChoose!(t, actorsUpTo(trace, t), chosen) : undefined} />
           {props.stale && mode === 'edit' && <div className="stage-note">Estás viendo la ejecución anterior. Presiona Ejecutar para ver tus cambios.</div>}
         </>
       }
       footer={
         <>
-          <Controls player={player} index={index} onCtrlC={props.onCtrlC && !props.running ? () => props.onCtrlC!(player.t) : undefined} />
+          <Controls
+            player={player}
+            index={index}
+            onCtrlC={props.onCtrlC && !props.running ? () => props.onCtrlC!(player.t) : undefined}
+            policy={trace.run.policy}
+            seed={trace.run.seed}
+            onPolicy={props.onPolicy && !props.running ? props.onPolicy : undefined}
+          />
           <Timeline trace={trace} index={index} player={player} />
         </>
       }

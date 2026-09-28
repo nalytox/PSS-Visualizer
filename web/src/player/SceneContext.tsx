@@ -15,6 +15,8 @@ export interface SceneCtx {
   showTip: (tip: Tip, el: Element) => void;
   hideTip: () => void;
   toggleMem: (pid: number) => void;
+  // Modo manual: elegir qué tarea da el siguiente paso.
+  choose?: (task: { pid: number; tid: number }) => void;
 }
 
 export const SceneContext = createContext<SceneCtx | null>(null);

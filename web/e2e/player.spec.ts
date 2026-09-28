@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const TRACES = ['fork_pipe', 'threads_mutex', 'signal_handler', 'structs_heap', 'fork_tree', '03_fork_simple', '04_fork_bucle', '05_exec', '16_fork_bomb', '06_pipe_padre_hijo', '07_pipe_sin_cerrar', '08_pipeline', '09_sigusr1', '10_sigchld', '11_sigint'];
+const TRACES = ['fork_pipe', 'threads_mutex', 'signal_handler', 'structs_heap', 'fork_tree', '03_fork_simple', '04_fork_bucle', '05_exec', '16_fork_bomb', '06_pipe_padre_hijo', '07_pipe_sin_cerrar', '08_pipeline', '09_sigusr1', '10_sigchld', '11_sigint', '12_hilos_carrera', '13_hilos_mutex', '14_productor_consumidor', '15_deadlock'];
 
 function collectErrors(page: Page): string[] {
   const errors: string[] = [];

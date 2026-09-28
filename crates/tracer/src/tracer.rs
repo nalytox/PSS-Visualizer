@@ -48,6 +48,10 @@ pub struct Options {
     pub limits: Limits,
     /// Señales enviadas desde la terminal (Ctrl+C) justo después del paso indicado.
     pub injections: Vec<(u64, i32)>,
+    pub policy: Policy,
+    pub seed: u64,
+    /// Tareas elegidas a mano para los primeros pasos; después sigue la política.
+    pub schedule: Vec<TaskRef>,
 }
 
 pub fn run(opts: &Options) -> Trace {
@@ -75,10 +79,10 @@ fn empty_trace(opts: &Options, compile: CompileResult, outcome: Outcome) -> Trac
         source: opts.source.clone(),
         stdin: latin1(&opts.stdin),
         run: RunConfig {
-            policy: Policy::RoundRobin,
-            seed: 0,
+            policy: opts.policy,
+            seed: opts.seed,
             stdin_eof: opts.stdin_eof,
-            schedule: Vec::new(),
+            schedule: opts.schedule.clone(),
             injections: opts
                 .injections
                 .iter()
@@ -182,7 +186,7 @@ fn run_in(dir: &Path, opts: &Options) -> Trace {
 enum End {
     /// Todos los procesos terminaron.
     Done,
-    AwaitingInput(u32),
+    AwaitingInput(u32, u32),
     Deadlock(Vec<TaskRef>),
     Truncated(TruncatedReason),
 }
@@ -198,6 +202,8 @@ enum Halt {
     /// El paso termina con el proceso dentro de una llamada a biblioteca (volvió de un handler
     /// que interrumpió esa llamada).
     Paused,
+    /// El hilo principal llamó a pthread_exit con otros hilos vivos: queda detenido en su exit.
+    ThreadDone,
     End(End),
 }
 
@@ -239,7 +245,7 @@ struct HandlerCtx {
 #[derive(Clone)]
 struct LibCall {
     name: String,
-    args: [u64; 3],
+    args: [u64; 4],
     ret_addr: u64,
     orig: u8,
     /// Registros al entrar: con ellos se lee la pila del llamador mientras la llamada no vuelve.
@@ -253,6 +259,11 @@ enum At {
     User,
     /// Dentro de una llamada a biblioteca (un hijo recién creado, o un proceso bloqueado en wait).
     Lib(Box<LibCall>),
+    /// Hilo recién creado: corre hasta la primera instrucción de su función.
+    Start {
+        addr: u64,
+        orig: u8,
+    },
     /// main ya volvió: corre libc hasta el exit.
     Exiting,
     Blackbox,
@@ -262,12 +273,18 @@ enum At {
 enum PState {
     Ready,
     Blocked(BlockReason),
+    /// Hilo que terminó; su proceso puede seguir vivo.
+    Gone,
     Zombie,
     Reaped,
 }
 
+/// Una tarea: un hilo. Los hilos de un proceso comparten su `vpid`; el principal tiene `tid == vpid`.
+/// Los campos del proceso (heap, fds, señales…) se copian en cada hilo: el que avanza toma la copia
+/// del principal antes de su paso y la reparte al terminarlo.
 struct Proc {
     vpid: u32,
+    tid: u32,
     pid: Pid,
     ppid: Option<u32>,
     pgid: u32,
@@ -299,16 +316,60 @@ struct Proc {
     handlers: Vec<HandlerCtx>,
     /// Máscara que pasó a sigsuspend mientras espera.
     suspend_mask: Option<u64>,
+    /// Pila del hilo en su última parada: la instantánea del proceso junta las de todos sus hilos.
+    stack: Vec<Frame>,
+    start: Option<ThreadStart>,
+    retval: Option<Value>,
+    /// Valor de `pthread_t` del hilo, para reconocerlo en pthread_join.
+    pthread: u64,
+    /// Espera en un futex: (dirección, valor esperado). Despierta cuando el valor cambia.
+    futex: Option<(u64, u32)>,
 }
 
 impl Proc {
+    /// El hilo puede avanzar o está esperando.
     fn alive(&self) -> bool {
+        matches!(self.state, PState::Ready | PState::Blocked(_))
+    }
+
+    /// El proceso no terminó (aunque este hilo sí).
+    fn proc_alive(&self) -> bool {
         !matches!(self.state, PState::Zombie | PState::Reaped)
+    }
+
+    fn is_leader(&self) -> bool {
+        self.tid == self.vpid
+    }
+
+    /// Copia en `self` los campos del proceso que tiene `from`.
+    fn take_shared(&mut self, from: &Proc) {
+        self.ppid = from.ppid;
+        self.pgid = from.pgid;
+        self.created_at = from.created_at;
+        self.heap = from.heap.clone();
+        self.maps = from.maps.clone();
+        self.image = from.image.clone();
+        self.exit = from.exit.clone();
+        self.exec_args = from.exec_args.clone();
+        self.vfork_parent = from.vfork_parent;
+        self.vfork_child = from.vfork_child;
+        self.mem = from.mem.clone();
+        self.output_bytes = from.output_bytes;
+        self.fds = from.fds.clone();
+        self.sigs = from.sigs.clone();
     }
 
     fn user_image(&self) -> bool {
         matches!(self.image, ProcessImage::User { .. })
     }
+}
+
+/// Mutex, variable de condición o semáforo que el programa usó.
+struct SyncEntry {
+    id: String,
+    kind: char,
+    pid: u32,
+    addr: u64,
 }
 
 struct Engine<'a> {
@@ -324,6 +385,10 @@ struct Engine<'a> {
     timers: Vec<(u32, u64)>,
     injected: usize,
     actor: Option<usize>,
+    /// Hilo creado en la llamada a pthread_create en curso (para anotar su pthread_t al volver).
+    last_thread: Option<usize>,
+    sync: Vec<SyncEntry>,
+    rng: u64,
     t: u64,
     clock: u64,
     cursor: usize,
@@ -380,6 +445,7 @@ impl<'a> Engine<'a> {
         }
         let root = Proc {
             vpid: VPID,
+            tid: VPID,
             pid,
             ppid: None,
             pgid: VPID,
@@ -406,6 +472,11 @@ impl<'a> Engine<'a> {
             sigs: SigState::default(),
             handlers: Vec::new(),
             suspend_mask: None,
+            stack: Vec::new(),
+            start: None,
+            retval: None,
+            pthread: 0,
+            futex: None,
         };
         Engine {
             debug,
@@ -419,6 +490,9 @@ impl<'a> Engine<'a> {
             timers: Vec::new(),
             injected: 0,
             actor: None,
+            last_thread: None,
+            sync: Vec::new(),
+            rng: opts.seed ^ 0x9e37_79b9_7f4a_7c15,
             t: 0,
             clock: 0,
             cursor: 0,
@@ -449,7 +523,8 @@ impl<'a> Engine<'a> {
             | ptrace::Options::PTRACE_O_EXITKILL
             | ptrace::Options::PTRACE_O_TRACEFORK
             | ptrace::Options::PTRACE_O_TRACEVFORK
-            | ptrace::Options::PTRACE_O_TRACEEXEC;
+            | ptrace::Options::PTRACE_O_TRACEEXEC
+            | ptrace::Options::PTRACE_O_TRACECLONE;
         let _ = ptrace::setoptions(self.procs[0].pid, options);
         if let Err(halt) = self.start_root() {
             return match halt {
@@ -461,7 +536,7 @@ impl<'a> Engine<'a> {
             if let Some(end) = self.limit_reached() {
                 return end;
             }
-            if self.procs.iter().all(|p| !p.alive()) {
+            if self.procs.iter().all(|p| !p.proc_alive()) {
                 return End::Done;
             }
             self.inject();
@@ -485,18 +560,23 @@ impl<'a> Engine<'a> {
                 });
             self.clock += STEP_MS;
             self.actor = Some(i);
+            self.pull(i);
             let result = self.advance(i);
             self.actor = None;
             match result {
                 Ok(Some((regs, line))) => self.capture(i, &regs, line),
                 Ok(None) | Err(Halt::Exec) => {}
                 Err(Halt::Blocked(reason)) => self.block(i, reason),
-                Err(Halt::Exited(status)) => self.on_exit(i, status),
+                Err(Halt::Exited(status)) => self.on_task_exit(i, status),
+                Err(Halt::ThreadDone) => self.thread_exit(i),
                 Err(Halt::Paused) => self.capture_in_call(i),
                 Err(Halt::Diverted) => unreachable!("advance sigue por el handler"),
                 Err(Halt::End(end)) => return end,
             }
+            self.push(i);
+            self.disarm(i);
             self.wake_io();
+            self.wake_futex();
             self.wake_signals();
             self.commit(Some(i), executed, choices);
             self.cursor = i;
@@ -541,13 +621,33 @@ impl<'a> Engine<'a> {
             .filter(|p| p.state == PState::Ready)
             .map(|p| TaskRef {
                 pid: p.vpid,
-                tid: p.vpid,
+                tid: p.tid,
             })
             .collect()
     }
 
     /// Round-robin: el siguiente proceso listo después del último que avanzó.
-    fn pick(&self) -> Option<usize> {
+    fn pick(&mut self) -> Option<usize> {
+        let ready: Vec<usize> = (0..self.procs.len())
+            .filter(|&i| self.procs[i].state == PState::Ready)
+            .collect();
+        let done = self.steps.iter().filter(|s| s.actor.is_some()).count();
+        if let Some(want) = self.opts.schedule.get(done)
+            && let Some(&i) = ready
+                .iter()
+                .find(|&&i| self.procs[i].vpid == want.pid && self.procs[i].tid == want.tid)
+        {
+            return Some(i);
+        }
+        if self.opts.policy == Policy::Random && !ready.is_empty() {
+            // xorshift64*: la misma semilla elige siempre la misma secuencia.
+            let mut x = self.rng.max(1);
+            x ^= x >> 12;
+            x ^= x << 25;
+            x ^= x >> 27;
+            self.rng = x;
+            return Some(ready[(x.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 33) as usize % ready.len()]);
+        }
         let n = self.procs.len();
         let first = if self.steps.len() <= 1 { 0 } else { self.cursor + 1 };
         (0..n)
@@ -579,7 +679,7 @@ impl<'a> Engine<'a> {
             .iter()
             .find(|p| matches!(&p.state, PState::Blocked(BlockReason::Read { stdin: true, .. })))
         {
-            return Some(End::AwaitingInput(p.vpid));
+            return Some(End::AwaitingInput(p.vpid, p.tid));
         }
         let tasks = self
             .procs
@@ -587,7 +687,7 @@ impl<'a> Engine<'a> {
             .filter(|p| p.alive())
             .map(|p| TaskRef {
                 pid: p.vpid,
-                tid: p.vpid,
+                tid: p.tid,
             })
             .collect();
         Some(End::Deadlock(tasks))
@@ -595,7 +695,7 @@ impl<'a> Engine<'a> {
 
     /// Procesos que alcanza un kill: un PID, el propio grupo (0), todos (-1) o un grupo (< -1).
     fn targets(&self, i: usize, target: i32) -> Vec<usize> {
-        let alive = |p: &Proc| p.alive();
+        let alive = |p: &Proc| p.is_leader() && p.proc_alive();
         match target {
             t if t > 0 => self
                 .index_of(t as u32)
@@ -628,10 +728,10 @@ impl<'a> Engine<'a> {
         });
         for k in targets {
             if sig == libc::SIGKILL {
-                let vpid = self.procs[k].vpid;
+                let (vpid, tid) = (self.procs[k].vpid, self.procs[k].tid);
                 self.events.push(Event::SignalDeliver {
                     pid: vpid,
-                    tid: vpid,
+                    tid,
                     signal: "SIGKILL".into(),
                     action: DeliverAction::Terminate,
                     handler: None,
@@ -740,10 +840,7 @@ impl<'a> Engine<'a> {
     }
 
     fn vpid_of_real(&self, real: i64) -> Option<u32> {
-        self.procs
-            .iter()
-            .find(|p| p.pid.as_raw() as i64 == real)
-            .map(|p| p.vpid)
+        self.procs.iter().find(|p| p.pid.as_raw() as i64 == real).map(|p| p.tid)
     }
 
     /// PID virtual (o -pgid virtual) que el programa pasa al kernel → PID real.
@@ -803,6 +900,14 @@ impl<'a> Engine<'a> {
                 let r = self.finish_call(i, *call).and_then(|_| self.step_lines(i, true));
                 return self.follow_handlers(i, r).map(Some);
             }
+            At::Start { addr, orig } => {
+                let r = self.run_to(i, addr, orig).and_then(|_| {
+                    self.procs[i].at = At::User;
+                    self.procs[i].last = None;
+                    self.step_lines(i, true)
+                });
+                return self.follow_handlers(i, r).map(Some);
+            }
             At::User => {}
         }
         let r = self.step_lines(i, false);
@@ -856,6 +961,9 @@ impl<'a> Engine<'a> {
                     return self.leave_handler(i);
                 }
                 if self.procs[i].calls.is_empty() {
+                    if !self.procs[i].is_leader() {
+                        self.procs[i].retval = Some(pointer_value(regs.ret()));
+                    }
                     self.procs[i].at = At::Exiting;
                     self.free_run(i, false)?;
                 }
@@ -977,10 +1085,11 @@ impl<'a> Engine<'a> {
     fn signal_stop(&mut self, i: usize, sig: Signal) -> Res<()> {
         let s = sig as i32;
         let vpid = self.procs[i].vpid;
+        let tid = self.procs[i].tid;
         let known = self.procs[i].sigs.take(s).is_some();
         let deliver = |action, handler| Event::SignalDeliver {
             pid: vpid,
-            tid: vpid,
+            tid,
             signal: sig.as_str().into(),
             action,
             handler,
@@ -1075,7 +1184,7 @@ impl<'a> Engine<'a> {
         p.at = ctx.at;
         self.events.push(Event::SignalReturn {
             pid: p.vpid,
-            tid: p.vpid,
+            tid: p.tid,
             signal: signals::name(ctx.sig),
         });
         if matches!(p.at, At::Lib(_)) {
@@ -1095,6 +1204,7 @@ impl<'a> Engine<'a> {
 
     fn deliver_fatal(&mut self, i: usize, sig: Signal) -> Halt {
         let vpid = self.procs[i].vpid;
+        let tid = self.procs[i].tid;
         if sig == Signal::SIGPIPE {
             self.events.push(Event::SignalSend {
                 from: SignalSource::Kernel {
@@ -1117,7 +1227,7 @@ impl<'a> Engine<'a> {
         );
         self.events.push(Event::SignalDeliver {
             pid: vpid,
-            tid: vpid,
+            tid,
             signal: sig.as_str().into(),
             action: if core {
                 DeliverAction::Core
@@ -1132,14 +1242,14 @@ impl<'a> Engine<'a> {
                 .unwrap_or(0);
             self.events.push(Event::MemError {
                 pid: vpid,
-                tid: vpid,
+                tid,
                 kind: MemErrorKind::Segfault,
                 addr: hex(addr),
             });
             self.mem_errors.push(MemErrorRef {
                 t: self.t + 1,
                 pid: vpid,
-                tid: vpid,
+                tid,
                 kind: MemErrorKind::Segfault,
                 addr: hex(addr),
             });
@@ -1160,7 +1270,7 @@ impl<'a> Engine<'a> {
     }
 
     fn library_call(&mut self, i: usize, entry: Regs, ret_addr: u64) -> Res<()> {
-        let args = [entry.arg(0), entry.arg(1), entry.arg(2)];
+        let args = [entry.arg(0), entry.arg(1), entry.arg(2), entry.arg(3)];
         // Atraviesa el stub de la PLT hasta llegar a la función real.
         let mut pc = entry.pc();
         for _ in 0..8 {
@@ -1192,6 +1302,10 @@ impl<'a> Engine<'a> {
             let tracee = &p.tracee;
             p.heap
                 .remember(args[0], |size| tracee.read(args[0], size.min(1 << 16) as usize));
+        }
+        self.note_sync_call(i, &name, &args);
+        if name == "pthread_exit" {
+            self.procs[i].retval = Some(pointer_value(args[0]));
         }
         let summary = call_summary(&name, &args, &self.procs[i].tracee);
         self.events.push(Event::Call {
@@ -1225,9 +1339,11 @@ impl<'a> Engine<'a> {
         Ok(())
     }
 
-    fn after_library_call(&mut self, i: usize, name: &str, args: [u64; 3], ret: u64) {
+    fn after_library_call(&mut self, i: usize, name: &str, args: [u64; 4], ret: u64) {
+        self.sync_event(i, name, &args, ret);
         let t = self.t + 1;
         let vpid = self.procs[i].vpid;
+        let tid = self.procs[i].tid;
         let line = self.procs[i].last.as_ref().map(|s| s.line).unwrap_or(0);
         let alloc = |s: &mut Self, fname: &str, addr: u64, size: u64, poison: bool| {
             if addr == 0 {
@@ -1309,7 +1425,7 @@ impl<'a> Engine<'a> {
                     self.mem_errors.push(MemErrorRef {
                         t,
                         pid: vpid,
-                        tid: vpid,
+                        tid,
                         kind,
                         addr: hex(args[0]),
                     });
@@ -1374,8 +1490,20 @@ impl<'a> Engine<'a> {
                     None => Ok(()),
                 }
             }
+            arch::SYS_CLONE | arch::SYS_CLONE3 if self.clone_is_thread(i, nr, &args) => {
+                let vpid = self.procs[i].vpid;
+                let threads = self.procs.iter().filter(|p| p.vpid == vpid && p.alive()).count();
+                if threads as u32 >= self.opts.limits.max_threads_per_process {
+                    return Err(Halt::End(End::Truncated(TruncatedReason::Threads)));
+                }
+                Ok(())
+            }
             arch::SYS_CLONE | arch::SYS_CLONE3 | arch::SYS_FORK | arch::SYS_VFORK => {
-                let alive = self.procs.iter().filter(|p| p.state != PState::Reaped).count();
+                let alive = self
+                    .procs
+                    .iter()
+                    .filter(|p| p.is_leader() && p.state != PState::Reaped)
+                    .count();
                 if alive as u32 >= self.opts.limits.max_processes {
                     return Err(Halt::End(End::Truncated(TruncatedReason::Processes)));
                 }
@@ -1423,6 +1551,23 @@ impl<'a> Engine<'a> {
                 Ok(())
             }
             arch::SYS_PAUSE => Err(Halt::Blocked(BlockReason::Pause)),
+            arch::SYS_FUTEX => {
+                let op = args[1] as i32 & 0x7f;
+                if op != libc::FUTEX_WAIT && op != libc::FUTEX_WAIT_BITSET {
+                    return Ok(());
+                }
+                let now = self.procs[i]
+                    .tracee
+                    .read(args[0], 4)
+                    .map(|b| u32::from_le_bytes(b.try_into().unwrap()));
+                if now != Some(args[2] as u32) {
+                    return Ok(());
+                }
+                self.procs[i].futex = Some((args[0], args[2] as u32));
+                Err(Halt::Blocked(self.futex_reason(i, args[0])))
+            }
+            // pthread_exit del hilo principal: su exit no se completa hasta que terminen los demás.
+            arch::SYS_EXIT if self.procs[i].is_leader() && self.siblings_alive(i) => Err(Halt::ThreadDone),
             arch::SYS_RT_SIGSUSPEND => {
                 self.procs[i].suspend_mask = self.procs[i].tracee.read_u64(args[0]);
                 Err(Halt::Blocked(BlockReason::Sigsuspend))
@@ -1491,6 +1636,7 @@ impl<'a> Engine<'a> {
 
     fn syscall_exit(&mut self, i: usize, nr: u64, args: [u64; 6], ret: i64) -> Res<bool> {
         let vpid = self.procs[i].vpid;
+        let tid = self.procs[i].tid;
         let pid = self.procs[i].pid;
         let rewrite = |v: u64| -> Res<()> {
             let mut regs = Regs::get(pid).map_err(|_| lost())?;
@@ -1621,7 +1767,8 @@ impl<'a> Engine<'a> {
                     .insert(ret as u32, fds::with_cloexec(&entry, flags & libc::O_CLOEXEC != 0));
             }
 
-            arch::SYS_GETPID | arch::SYS_GETTID => rewrite(vpid as u64)?,
+            arch::SYS_GETPID => rewrite(vpid as u64)?,
+            arch::SYS_GETTID => rewrite(tid as u64)?,
             arch::SYS_GETPPID | arch::SYS_GETPGID | arch::SYS_GETPGRP | arch::SYS_GETSID => {
                 rewrite(self.vpid_of_real(ret).unwrap_or(INIT) as u64)?
             }
@@ -1653,12 +1800,8 @@ impl<'a> Engine<'a> {
                 }
                 let child = self.vpid_of_real(ret).unwrap_or(INIT);
                 rewrite(child as u64)?;
-                let status = self.index_of(child).and_then(|c| {
-                    let c = &mut self.procs[c];
-                    c.state = PState::Reaped;
-                    c.mem = None;
-                    c.exit.clone()
-                });
+                let status = self.index_of(child).and_then(|c| self.procs[c].exit.clone());
+                self.set_proc_state(child, PState::Reaped);
                 self.events.push(Event::Wait {
                     pid: vpid,
                     target,
@@ -1686,7 +1829,11 @@ impl<'a> Engine<'a> {
     }
 
     fn pipe_ends(&self, id: &str, kind: PipeEndKind) -> usize {
-        let tables = self.procs.iter().filter(|p| p.alive()).map(|p| (p.vpid, &p.fds));
+        let tables = self
+            .procs
+            .iter()
+            .filter(|p| p.is_leader() && p.proc_alive())
+            .map(|p| (p.vpid, &p.fds));
         fds::ends(tables, id, kind).len()
     }
 
@@ -1777,6 +1924,7 @@ impl<'a> Engine<'a> {
     /// E/S visible (terminal, stdin o pipe).
     fn io_exit(&mut self, i: usize, nr: u64, args: [u64; 6], ret: i64) -> bool {
         let vpid = self.procs[i].vpid;
+        let tid = self.procs[i].tid;
         let fd = args[0] as u32;
         let write = nr == arch::SYS_WRITE || nr == arch::SYS_WRITEV;
         let vector = nr == arch::SYS_WRITEV || nr == arch::SYS_READV;
@@ -1786,7 +1934,7 @@ impl<'a> Engine<'a> {
             if write && ret == -(libc::EPIPE as i64) && pipe.is_some() {
                 self.events.push(Event::Write {
                     pid: vpid,
-                    tid: vpid,
+                    tid,
                     fd,
                     pipe,
                     terminal: false,
@@ -1806,7 +1954,7 @@ impl<'a> Engine<'a> {
                 self.pipes.write(&pipe, &bytes);
                 self.events.push(Event::Write {
                     pid: vpid,
-                    tid: vpid,
+                    tid,
                     fd,
                     pipe: Some(pipe),
                     terminal: false,
@@ -1822,7 +1970,7 @@ impl<'a> Engine<'a> {
                 }
                 self.events.push(Event::Read {
                     pid: vpid,
-                    tid: vpid,
+                    tid,
                     fd,
                     stdin: pipe.is_none(),
                     pipe,
@@ -1847,7 +1995,7 @@ impl<'a> Engine<'a> {
         p.output_bytes += bytes.len() as u64;
         self.events.push(Event::Write {
             pid: p.vpid,
-            tid: p.vpid,
+            tid: p.tid,
             fd,
             pipe: None,
             terminal: true,
@@ -1864,7 +2012,13 @@ impl<'a> Engine<'a> {
         match ev {
             libc::PTRACE_EVENT_FORK | libc::PTRACE_EVENT_VFORK | libc::PTRACE_EVENT_CLONE => {
                 let child = ptrace::getevent(self.procs[i].pid).map_err(|_| lost())?;
-                self.spawn(i, Pid::from_raw(child as i32), ev == libc::PTRACE_EVENT_VFORK)
+                let child = Pid::from_raw(child as i32);
+                match self.procs[i].sys {
+                    Some((nr, args)) if ev == libc::PTRACE_EVENT_CLONE && self.clone_is_thread(i, nr, &args) => {
+                        self.spawn_thread(i, child)
+                    }
+                    _ => self.spawn(i, child, ev == libc::PTRACE_EVENT_VFORK),
+                }
             }
             libc::PTRACE_EVENT_EXEC => self.on_exec(i),
             _ => Ok(()),
@@ -1888,6 +2042,7 @@ impl<'a> Engine<'a> {
         let p = &self.procs[i];
         let c = Proc {
             vpid,
+            tid: vpid,
             pid: child,
             ppid: Some(p.vpid),
             pgid: p.pgid,
@@ -1912,6 +2067,11 @@ impl<'a> Engine<'a> {
             sigs: p.sigs.for_child(),
             handlers: p.handlers.clone(),
             suspend_mask: None,
+            stack: p.stack.clone(),
+            start: None,
+            retval: None,
+            pthread: 0,
+            futex: None,
         };
         let parent = p.vpid;
         self.procs.push(c);
@@ -1974,15 +2134,13 @@ impl<'a> Engine<'a> {
 
     fn block(&mut self, i: usize, reason: BlockReason) {
         let vpid = self.procs[i].vpid;
+        let tid = self.procs[i].tid;
         if self.procs[i].user_image() && matches!(self.procs[i].at, At::Lib(_)) {
             self.capture_in_call(i);
         }
+        self.sync_block_event(i, &reason);
         self.procs[i].state = PState::Blocked(reason.clone());
-        self.events.push(Event::Block {
-            pid: vpid,
-            tid: vpid,
-            reason,
-        });
+        self.events.push(Event::Block { pid: vpid, tid, reason });
     }
 
     fn unblock(&mut self, i: usize) {
@@ -1990,7 +2148,7 @@ impl<'a> Engine<'a> {
         p.state = PState::Ready;
         self.events.push(Event::Unblock {
             pid: p.vpid,
-            tid: p.vpid,
+            tid: p.tid,
         });
     }
 
@@ -2070,7 +2228,7 @@ impl<'a> Engine<'a> {
         self.timers.retain(|(p, _)| *p != vpid);
         // El kernel avisa al padre con SIGCHLD; solo se dibuja si el padre lo atiende.
         if let Some(pi) = self.procs[i].ppid.and_then(|pp| self.index_of(pp))
-            && self.procs[pi].alive()
+            && self.procs[pi].proc_alive()
             && matches!(
                 self.procs[pi].sigs.actions.get(&libc::SIGCHLD),
                 Some(Action::Handler(_))
@@ -2152,9 +2310,10 @@ impl<'a> Engine<'a> {
         }
         let mut snap = {
             let mut reader = Reader::new(self.debug, &p.tracee, &p.heap, self.binary_path.clone(), p.maps.clone());
-            reader.snapshot(&frames, p.vpid, t)
+            reader.extra_stacks(self.thread_stacks(i));
+            reader.snapshot(&frames, p.tid, t)
         };
-        if let Some(stack) = snap.stacks.get_mut(&p.vpid) {
+        if let Some(stack) = snap.stacks.get_mut(&p.tid) {
             let mut from = 0;
             for (end, sig) in marks {
                 for f in stack.iter_mut().take(end).skip(from) {
@@ -2163,6 +2322,18 @@ impl<'a> Engine<'a> {
                 from = end;
             }
         }
+        let vpid = p.vpid;
+        self.describe_sync(vpid, &mut snap);
+        let p = &self.procs[i];
+        let stack = snap.stacks.remove(&p.tid).unwrap_or_default();
+        let vpid = p.vpid;
+        self.procs[i].stack = stack;
+        snap.stacks = self
+            .procs
+            .iter()
+            .filter(|q| q.vpid == vpid && q.alive())
+            .map(|q| (q.tid, q.stack.clone()))
+            .collect();
         let mem = self.snapshot_id(snap);
         let p = &mut self.procs[i];
         p.mem = Some(mem);
@@ -2206,25 +2377,51 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn view(&self, i: usize, actor: Option<usize>, t: u64) -> Process {
-        let p = &self.procs[i];
-        let running = actor == Some(i) && t > 0;
-        let (pstate, tstate, blocked_on) = match &p.state {
-            PState::Zombie => (ProcessState::Zombie, ThreadState::Exited, None),
-            PState::Reaped => (ProcessState::Reaped, ThreadState::Exited, None),
-            PState::Blocked(r) => (ProcessState::Blocked, ThreadState::Blocked, Some(r.clone())),
-            PState::Ready if running => (ProcessState::Running, ThreadState::Running, None),
-            PState::Ready => (ProcessState::Ready, ThreadState::Ready, None),
+    fn thread_view(&self, k: usize, actor: Option<usize>, t: u64) -> Thread {
+        let p = &self.procs[k];
+        let running = actor == Some(k) && t > 0;
+        let (tstate, blocked_on) = match &p.state {
+            PState::Blocked(r) => (ThreadState::Blocked, Some(r.clone())),
+            PState::Ready if running => (ThreadState::Running, None),
+            PState::Ready => (ThreadState::Ready, None),
+            _ => (ThreadState::Exited, None),
         };
-        let (line, func) = match (&p.last, tstate) {
-            (Some(s), ThreadState::Ready | ThreadState::Running | ThreadState::Blocked) if p.user_image() => {
-                (Some(s.line), Some(s.func.clone()))
-            }
+        let (line, func) = match &p.last {
+            Some(s) if p.alive() && p.user_image() => (Some(s.line), Some(s.func.clone())),
             _ => (None, None),
         };
         let in_call = match &p.at {
             At::Lib(c) if p.alive() => Some(c.name.clone()),
             _ => None,
+        };
+        Thread {
+            tid: p.tid,
+            main: p.is_leader(),
+            state: tstate,
+            line,
+            func,
+            in_call,
+            blocked_on,
+            start: p.start.clone(),
+            holds: self.holds(k),
+            in_handler: p.handlers.last().filter(|_| p.alive()).map(|h| signals::name(h.sig)),
+            retval: p.retval.clone().filter(|_| !p.alive()),
+        }
+    }
+
+    /// El proceso cuyo hilo principal es `i`, con todos sus hilos.
+    fn view(&self, i: usize, actor: Option<usize>, t: u64) -> Process {
+        let p = &self.procs[i];
+        let threads: Vec<Thread> = (0..self.procs.len())
+            .filter(|&k| self.procs[k].vpid == p.vpid)
+            .map(|k| self.thread_view(k, actor, t))
+            .collect();
+        let pstate = match p.state {
+            PState::Zombie => ProcessState::Zombie,
+            PState::Reaped => ProcessState::Reaped,
+            _ if threads.iter().any(|th| th.state == ThreadState::Running) => ProcessState::Running,
+            _ if threads.iter().any(|th| th.state == ThreadState::Ready) => ProcessState::Ready,
+            _ => ProcessState::Blocked,
         };
         Process {
             pid: p.vpid,
@@ -2234,34 +2431,605 @@ impl<'a> Engine<'a> {
             created_at: p.created_at,
             image: p.image.clone(),
             exit: p.exit.clone(),
-            fds: if p.alive() { p.fds.clone() } else { BTreeMap::new() },
+            fds: if p.proc_alive() { p.fds.clone() } else { BTreeMap::new() },
             signals: p.sigs.view(),
-            threads: vec![Thread {
-                tid: p.vpid,
-                main: true,
-                state: tstate,
-                line,
-                func,
-                in_call,
-                blocked_on,
-                start: None,
-                holds: Vec::new(),
-                in_handler: p.handlers.last().filter(|_| p.alive()).map(|h| signals::name(h.sig)),
-                retval: None,
-            }],
+            threads,
             mem: if p.state == PState::Reaped { None } else { p.mem.clone() },
         }
+    }
+
+    /// Mutex que tiene tomados el hilo `k`.
+    fn holds(&self, k: usize) -> Vec<String> {
+        let tid = self.procs[k].tid;
+        self.sync
+            .iter()
+            .filter(|e| e.kind == 'm' && e.pid == self.procs[k].vpid && self.mutex_owner(e) == Some(tid))
+            .map(|e| e.id.clone())
+            .collect()
+    }
+
+    // ---------- hilos ----------
+
+    fn leader_idx(&self, i: usize) -> usize {
+        self.index_of(self.procs[i].vpid).unwrap_or(i)
+    }
+
+    fn copy_shared(&mut self, from: usize, to: usize) {
+        if from == to {
+            return;
+        }
+        let (src, dst) = if from < to {
+            let (l, r) = self.procs.split_at_mut(to);
+            (&l[from], &mut r[0])
+        } else {
+            let (l, r) = self.procs.split_at_mut(from);
+            (&r[0], &mut l[to])
+        };
+        dst.take_shared(src);
+    }
+
+    /// Antes del paso de un hilo: toma el estado del proceso que guarda el hilo principal.
+    fn pull(&mut self, i: usize) {
+        let l = self.leader_idx(i);
+        self.copy_shared(l, i);
+    }
+
+    /// Después del paso: el estado del proceso que dejó el hilo pasa a todos sus hermanos.
+    fn push(&mut self, i: usize) {
+        let vpid = self.procs[i].vpid;
+        for k in 0..self.procs.len() {
+            if k != i && self.procs[k].vpid == vpid {
+                self.copy_shared(i, k);
+            }
+        }
+    }
+
+    /// Un hilo que se detuvo dentro de una llamada deja su breakpoint en memoria compartida: se
+    /// quita para que otro hilo no lo pise (se vuelve a poner al reanudar).
+    fn disarm(&mut self, i: usize) {
+        if let At::Lib(call) = &self.procs[i].at
+            && self.procs[i].alive()
+        {
+            self.procs[i].tracee.write(call.ret_addr, &[call.orig]);
+        }
+    }
+
+    fn siblings_alive(&self, i: usize) -> bool {
+        let p = &self.procs[i];
+        self.procs
+            .iter()
+            .any(|q| q.vpid == p.vpid && q.tid != p.tid && q.alive())
+    }
+
+    fn set_proc_state(&mut self, vpid: u32, state: PState) {
+        for p in self.procs.iter_mut().filter(|p| p.vpid == vpid) {
+            if state == PState::Reaped {
+                p.mem = None;
+            }
+            p.state = state.clone();
+        }
+    }
+
+    fn clone_is_thread(&self, i: usize, nr: u64, args: &[u64; 6]) -> bool {
+        let flags = if nr == arch::SYS_CLONE3 {
+            self.procs[i].tracee.read_u64(args[0]).unwrap_or(0)
+        } else {
+            args[0]
+        };
+        flags & libc::CLONE_THREAD as u64 != 0
+    }
+
+    /// pthread_create: el hilo nuevo parte en start_thread de glibc y corre hasta su función.
+    fn spawn_thread(&mut self, i: usize, child: Pid) -> Res<()> {
+        loop {
+            match waitpid(child, Some(WaitPidFlag::__WALL)) {
+                Ok(WaitStatus::Stopped(_, Signal::SIGSTOP)) => break,
+                Ok(WaitStatus::Stopped(..)) | Ok(WaitStatus::PtraceEvent(..)) => {
+                    let _ = ptrace::cont(child, None);
+                }
+                _ => return Err(lost()),
+            }
+        }
+        self.live.lock().unwrap().push(child);
+        let tracee = Tracee::attach(child).map_err(|_| lost())?;
+        let tid = VPID + self.procs.len() as u32;
+        let (start_addr, arg) = match &self.procs[i].at {
+            At::Lib(call) => (call.args[2], call.args[3]),
+            _ => (0, 0),
+        };
+        let f = self.debug.functions.iter().find(|f| f.low == start_addr);
+        let (name, decl) = f.map_or((hex(start_addr), 0), |f| (f.name.clone(), f.decl_line));
+        let orig = tracee.read(start_addr, 1).map_or(0, |b| b[0]);
+        let p = &self.procs[i];
+        let start = ThreadStart {
+            func: name.clone(),
+            arg: pointer_value(arg),
+        };
+        let t = Proc {
+            vpid: p.vpid,
+            tid,
+            pid: child,
+            ppid: p.ppid,
+            pgid: p.pgid,
+            created_at: p.created_at,
+            tracee,
+            heap: p.heap.clone(),
+            maps: p.maps.clone(),
+            image: p.image.clone(),
+            at: At::Start { addr: start_addr, orig },
+            state: PState::Ready,
+            exit: None,
+            last: Some(Stop {
+                pc: start_addr,
+                line: decl,
+                cfa: 0,
+                func: name.clone(),
+            }),
+            calls: Vec::new(),
+            sys: None,
+            sig: None,
+            exec_args: None,
+            vfork_parent: None,
+            vfork_child: None,
+            mem: p.mem.clone(),
+            output_bytes: p.output_bytes,
+            fds: p.fds.clone(),
+            sigs: p.sigs.clone(),
+            handlers: Vec::new(),
+            suspend_mask: None,
+            stack: vec![Frame {
+                func: name.clone(),
+                line: decl,
+                params: Vec::new(),
+                locals: Vec::new(),
+                signal: None,
+            }],
+            start: Some(start.clone()),
+            retval: None,
+            pthread: 0,
+            futex: None,
+        };
+        let (pid, creator) = (p.vpid, p.tid);
+        self.procs.push(t);
+        self.last_thread = Some(self.procs.len() - 1);
+        self.events.push(Event::ThreadCreate {
+            pid,
+            creator,
+            tid,
+            func: name,
+            arg: start.arg,
+        });
+        Ok(())
+    }
+
+    /// Un hilo terminó. Si era el último (o fue exit_group, o una señal), termina el proceso.
+    fn on_task_exit(&mut self, i: usize, status: WaitStatus) {
+        let only_thread = matches!(status, WaitStatus::Exited(..))
+            && matches!(self.procs[i].sys, Some((nr, _)) if nr == arch::SYS_EXIT);
+        if only_thread && (self.siblings_alive(i) || !self.procs[i].is_leader()) {
+            self.live.lock().unwrap().retain(|p| *p != self.procs[i].pid);
+            self.thread_exit(i);
+            let l = self.leader_idx(i);
+            // pthread_exit en main y ya no queda nadie: el proceso termina de verdad.
+            if !self.siblings_alive(l) && self.procs[l].state == PState::Gone && self.procs[l].proc_alive() {
+                let _ = ptrace::syscall(self.procs[l].pid, None);
+                if let Ok(st @ (WaitStatus::Exited(..) | WaitStatus::Signaled(..))) =
+                    waitpid(self.procs[l].pid, Some(WaitPidFlag::__WALL))
+                {
+                    self.process_exit(l, st);
+                }
+            }
+            return;
+        }
+        self.process_exit(i, status);
+    }
+
+    fn process_exit(&mut self, i: usize, status: WaitStatus) {
+        let vpid = self.procs[i].vpid;
+        // Los demás hilos mueren con el proceso: se recogen antes que el principal.
+        for k in 0..self.procs.len() {
+            if k == i
+                || self.procs[k].vpid != vpid
+                || !(self.procs[k].alive() || self.procs[k].is_leader() && self.procs[k].state == PState::Gone)
+            {
+                continue;
+            }
+            let pid = self.procs[k].pid;
+            let _ = nix::sys::signal::kill(pid, Signal::SIGKILL);
+            while let Ok(st) = waitpid(pid, Some(WaitPidFlag::__WALL)) {
+                if matches!(st, WaitStatus::Exited(..) | WaitStatus::Signaled(..)) {
+                    break;
+                }
+            }
+            self.live.lock().unwrap().retain(|p| *p != pid);
+            self.procs[k].state = PState::Gone;
+        }
+        let l = self.leader_idx(i);
+        self.copy_shared(i, l);
+        self.on_exit(l, status);
+        let state = self.procs[l].state.clone();
+        self.push(l);
+        self.set_proc_state(vpid, state);
+    }
+
+    fn thread_exit(&mut self, i: usize) {
+        let p = &mut self.procs[i];
+        p.state = PState::Gone;
+        p.futex = None;
+        self.events.push(Event::Exit {
+            pid: p.vpid,
+            tid: Some(p.tid),
+            scope: ExitScope::Thread,
+            code: None,
+            signal: None,
+            retval: p.retval.clone(),
+        });
+    }
+
+    fn joined_tid(&self, i: usize, pthread: u64) -> u32 {
+        let vpid = self.procs[i].vpid;
+        self.procs
+            .iter()
+            .find(|p| p.vpid == vpid && p.pthread == pthread && pthread != 0)
+            .map_or(0, |p| p.tid)
+    }
+
+    /// Por qué espera un hilo en un futex, según la llamada de pthread en la que está.
+    fn futex_reason(&mut self, i: usize, uaddr: u64) -> BlockReason {
+        let pid = self.procs[i].vpid;
+        let At::Lib(call) = self.procs[i].at.clone() else {
+            return BlockReason::Pause;
+        };
+        match call.name.as_str() {
+            "pthread_mutex_lock" | "pthread_mutex_timedlock" => {
+                let id = self.sync_id(pid, call.args[0], 'm');
+                BlockReason::Mutex {
+                    owner: self.mutex_owner_at(pid, call.args[0]),
+                    id,
+                }
+            }
+            "pthread_cond_wait" | "pthread_cond_timedwait" if (call.args[1]..call.args[1] + 40).contains(&uaddr) => {
+                let id = self.sync_id(pid, call.args[1], 'm');
+                BlockReason::Mutex {
+                    owner: self.mutex_owner_at(pid, call.args[1]),
+                    id,
+                }
+            }
+            "pthread_cond_wait" | "pthread_cond_timedwait" => BlockReason::Cond {
+                id: self.sync_id(pid, call.args[0], 'c'),
+                mutex: self.sync_id(pid, call.args[1], 'm'),
+            },
+            "pthread_join" => BlockReason::Join {
+                tid: self.joined_tid(i, call.args[0]),
+            },
+            "sem_wait" | "sem_timedwait" => BlockReason::Sem {
+                id: self.sync_id(pid, call.args[0], 's'),
+            },
+            _ => BlockReason::Mutex {
+                id: format!("futex {uaddr:#x}"),
+                owner: None,
+            },
+        }
+    }
+
+    /// Quien espera en un futex despierta cuando el valor cambió: el kernel devolverá EAGAIN y
+    /// glibc vuelve a intentar (tomar el mutex, ver la señal de la condición, el fin del hilo…).
+    fn wake_futex(&mut self) {
+        for i in 0..self.procs.len() {
+            let Some((addr, val)) = self.procs[i].futex else {
+                continue;
+            };
+            if !matches!(self.procs[i].state, PState::Blocked(_)) {
+                continue;
+            }
+            let now = self.procs[i]
+                .tracee
+                .read(addr, 4)
+                .map(|b| u32::from_le_bytes(b.try_into().unwrap()));
+            if now == Some(val) {
+                continue;
+            }
+            self.procs[i].futex = None;
+            if let PState::Blocked(BlockReason::Cond { id, .. }) = &self.procs[i].state {
+                let tid = self.procs[i].tid;
+                for ev in self.events.iter_mut() {
+                    if let Event::Cond {
+                        op: CondOp::Signal | CondOp::Broadcast,
+                        id: cid,
+                        woke: Some(woke),
+                        ..
+                    } = ev
+                        && cid == id
+                    {
+                        woke.push(tid);
+                    }
+                }
+            }
+            self.unblock(i);
+        }
+    }
+
+    // ---------- mutex, variables de condición y semáforos ----------
+
+    fn sync_id(&mut self, pid: u32, addr: u64, kind: char) -> String {
+        if let Some(e) = self.sync.iter().find(|e| e.pid == pid && e.addr == addr) {
+            return e.id.clone();
+        }
+        let n = self.sync.iter().filter(|e| e.kind == kind).count();
+        let id = format!("{kind}{n}");
+        self.sync.push(SyncEntry {
+            id: id.clone(),
+            kind,
+            pid,
+            addr,
+        });
+        id
+    }
+
+    fn note_sync_call(&mut self, i: usize, name: &str, args: &[u64; 4]) {
+        let pid = self.procs[i].vpid;
+        if name.starts_with("pthread_mutex_") {
+            self.sync_id(pid, args[0], 'm');
+        } else if name.starts_with("pthread_cond_") {
+            self.sync_id(pid, args[0], 'c');
+            if name.contains("wait") {
+                self.sync_id(pid, args[1], 'm');
+            }
+        } else if name.starts_with("sem_") {
+            self.sync_id(pid, args[0], 's');
+        }
+    }
+
+    fn read_u32(&self, pid: u32, addr: u64) -> Option<u32> {
+        let k = self.index_of(pid)?;
+        self.procs[k]
+            .tracee
+            .read(addr, 4)
+            .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+    }
+
+    /// Dueño de un mutex de glibc: el campo `__owner` guarda el TID real de quien lo tiene.
+    fn mutex_owner_at(&self, pid: u32, addr: u64) -> Option<u32> {
+        let owner = self.read_u32(pid, addr + 8)? as i64;
+        (owner != 0).then(|| self.vpid_of_real(owner)).flatten()
+    }
+
+    fn mutex_owner(&self, e: &SyncEntry) -> Option<u32> {
+        self.mutex_owner_at(e.pid, e.addr)
+    }
+
+    fn sem_value(&self, pid: u32, addr: u64) -> i64 {
+        self.read_u32(pid, addr).unwrap_or(0) as i64
+    }
+
+    fn sync_event(&mut self, i: usize, name: &str, args: &[u64; 4], ret: u64) {
+        let (pid, tid) = (self.procs[i].vpid, self.procs[i].tid);
+        let ok = ret as i32 == 0;
+        let ev = match name {
+            "pthread_mutex_lock" | "pthread_mutex_trylock" | "pthread_mutex_unlock" => Event::Mutex {
+                op: match name {
+                    "pthread_mutex_lock" => MutexOp::Lock,
+                    "pthread_mutex_trylock" => MutexOp::Trylock,
+                    _ => MutexOp::Unlock,
+                },
+                id: self.sync_id(pid, args[0], 'm'),
+                tid,
+                result: match name {
+                    "pthread_mutex_unlock" => SyncResult::Released,
+                    _ if ok => SyncResult::Acquired,
+                    _ => SyncResult::Busy,
+                },
+            },
+            "pthread_cond_wait" | "pthread_cond_timedwait" => Event::Cond {
+                op: CondOp::Wake,
+                id: self.sync_id(pid, args[0], 'c'),
+                tid,
+                woke: None,
+            },
+            "pthread_cond_signal" | "pthread_cond_broadcast" => Event::Cond {
+                op: if name.ends_with("signal") {
+                    CondOp::Signal
+                } else {
+                    CondOp::Broadcast
+                },
+                id: self.sync_id(pid, args[0], 'c'),
+                tid,
+                woke: Some(Vec::new()),
+            },
+            "sem_wait" | "sem_trywait" | "sem_post" => Event::Sem {
+                op: match name {
+                    "sem_wait" => SemOp::Wait,
+                    "sem_trywait" => SemOp::Trywait,
+                    _ => SemOp::Post,
+                },
+                id: self.sync_id(pid, args[0], 's'),
+                tid,
+                value: self.sem_value(pid, args[0]),
+                result: match name {
+                    "sem_post" => SyncResult::Posted,
+                    _ if ok => SyncResult::Acquired,
+                    _ => SyncResult::Busy,
+                },
+            },
+            "pthread_create" => {
+                if let Some(k) = self.last_thread.take() {
+                    self.procs[k].pthread = self.procs[i].tracee.read_u64(args[0]).unwrap_or(0);
+                }
+                return;
+            }
+            "pthread_join" => {
+                let target = self.joined_tid(i, args[0]);
+                let retval = self
+                    .procs
+                    .iter()
+                    .find(|p| p.vpid == pid && p.tid == target)
+                    .and_then(|p| p.retval.clone());
+                Event::Join { tid, target, retval }
+            }
+            _ => return,
+        };
+        self.events.push(ev);
+    }
+
+    fn sync_block_event(&mut self, i: usize, reason: &BlockReason) {
+        let (pid, tid) = (self.procs[i].vpid, self.procs[i].tid);
+        let ev = match reason {
+            BlockReason::Mutex { id, .. } if !id.starts_with("futex") => Event::Mutex {
+                op: MutexOp::Lock,
+                id: id.clone(),
+                tid,
+                result: SyncResult::Blocked,
+            },
+            BlockReason::Cond { id, .. } => Event::Cond {
+                op: CondOp::Wait,
+                id: id.clone(),
+                tid,
+                woke: None,
+            },
+            BlockReason::Sem { id } => {
+                let addr = self.sync.iter().find(|e| e.id == *id).map_or(0, |e| e.addr);
+                Event::Sem {
+                    op: SemOp::Wait,
+                    id: id.clone(),
+                    tid,
+                    value: self.sem_value(pid, addr),
+                    result: SyncResult::Blocked,
+                }
+            }
+            _ => return,
+        };
+        self.events.push(ev);
+    }
+
+    /// Nombre de la variable del programa que vive en `addr`, si la instantánea la muestra.
+    fn var_name(&self, pid: u32, addr: u64) -> Option<String> {
+        let k = self.index_of(pid)?;
+        let snap = self.snapshots.get(self.procs[k].mem.as_ref()?)?;
+        let want = hex(addr);
+        snap.globals
+            .iter()
+            .chain(
+                snap.stacks
+                    .values()
+                    .flatten()
+                    .flat_map(|f| f.params.iter().chain(&f.locals)),
+            )
+            .find(|v| v.addr == want)
+            .map(|v| v.name.clone())
+    }
+
+    fn sync_view(&self) -> Vec<SyncObject> {
+        let waiting = |pred: &dyn Fn(&BlockReason) -> bool, pid: u32| -> Vec<u32> {
+            self.procs
+                .iter()
+                .filter(|p| p.vpid == pid && matches!(&p.state, PState::Blocked(r) if pred(r)))
+                .map(|p| p.tid)
+                .collect()
+        };
+        self.sync
+            .iter()
+            .filter(|e| self.index_of(e.pid).is_some_and(|k| self.procs[k].proc_alive()))
+            .map(|e| {
+                let (id, pid, addr, name) = (e.id.clone(), e.pid, hex(e.addr), self.var_name(e.pid, e.addr));
+                match e.kind {
+                    'm' => SyncObject::Mutex {
+                        waiters: waiting(&|r| matches!(r, BlockReason::Mutex { id: m, .. } if *m == e.id), pid),
+                        owner: self.mutex_owner(e),
+                        id,
+                        pid,
+                        addr,
+                        name,
+                    },
+                    'c' => SyncObject::Cond {
+                        waiters: waiting(&|r| matches!(r, BlockReason::Cond { id: c, .. } if *c == e.id), pid),
+                        id,
+                        pid,
+                        addr,
+                        name,
+                    },
+                    _ => SyncObject::Sem {
+                        waiters: waiting(&|r| matches!(r, BlockReason::Sem { id: s } if *s == e.id), pid),
+                        value: self.sem_value(pid, e.addr),
+                        id,
+                        pid,
+                        addr,
+                        name,
+                    },
+                }
+            })
+            .collect()
+    }
+
+    /// Los tipos de pthread son opacos: en vez de sus bytes internos (que guardan TIDs reales) se
+    /// muestra su estado.
+    fn describe_sync(&self, pid: u32, snap: &mut MemorySnapshot) {
+        fn walk(e: &Engine, pid: u32, v: &mut Var) {
+            let addr = u64::from_str_radix(v.addr.trim_start_matches("0x"), 16).unwrap_or(0);
+            let note = match v.ty.as_str() {
+                "pthread_mutex_t" => Some(match e.mutex_owner_at(pid, addr) {
+                    Some(t) => format!("mutex tomado por el hilo {t}"),
+                    None => "mutex libre".to_string(),
+                }),
+                "pthread_cond_t" => Some("variable de condición".to_string()),
+                "sem_t" => Some(format!("semáforo = {}", e.sem_value(pid, addr))),
+                "pthread_t" => {
+                    let k = e.index_of(pid);
+                    let value = k.and_then(|k| e.procs[k].tracee.read_u64(addr)).unwrap_or(0);
+                    e.procs
+                        .iter()
+                        .find(|p| p.vpid == pid && p.pthread == value && value != 0)
+                        .map(|p| format!("hilo {}", p.tid))
+                }
+                _ => None,
+            };
+            if let Some(note) = note {
+                v.value = Value::Opaque { note };
+                v.uninit = false;
+                return;
+            }
+            match &mut v.value {
+                Value::Struct { fields } | Value::Union { fields } => fields.iter_mut().for_each(|f| walk(e, pid, f)),
+                _ => {}
+            }
+        }
+        for v in snap.globals.iter_mut() {
+            walk(self, pid, v);
+        }
+        for f in snap.stacks.values_mut().flatten() {
+            for v in f.params.iter_mut().chain(f.locals.iter_mut()) {
+                walk(self, pid, v);
+            }
+        }
+    }
+
+    /// Mapeos que contienen la pila de cada hilo del proceso de `i`.
+    fn thread_stacks(&self, i: usize) -> Vec<(u64, u64)> {
+        let vpid = self.procs[i].vpid;
+        let maps = &self.procs[i].maps;
+        self.procs
+            .iter()
+            .filter(|p| p.vpid == vpid && !p.is_leader())
+            .filter_map(|p| p.last.as_ref().map(|s| s.cfa).filter(|c| *c != 0))
+            .filter_map(|cfa| {
+                maps.iter()
+                    .find(|m| cfa >= m.start && cfa <= m.end)
+                    .map(|m| (m.start, m.end))
+            })
+            .collect()
     }
 
     fn commit(&mut self, actor: Option<usize>, executed: Option<ExecutedLine>, choices: Vec<TaskRef>) {
         let t = if self.steps.is_empty() { 0 } else { self.t + 1 };
         self.take_output(t);
-        let processes = (0..self.procs.len()).map(|k| self.view(k, actor, t)).collect();
+        let processes = (0..self.procs.len())
+            .filter(|&k| self.procs[k].is_leader())
+            .map(|k| self.view(k, actor, t))
+            .collect();
         self.steps.push(Step {
             t,
             actor: actor.map(|a| TaskRef {
                 pid: self.procs[a].vpid,
-                tid: self.procs[a].vpid,
+                tid: self.procs[a].tid,
             }),
             executed,
             choices,
@@ -2270,7 +3038,12 @@ impl<'a> Engine<'a> {
             processes,
             pipes: self.pipe_view(),
             stdin: self.stdin_state(),
-            signals: self.procs.iter().flat_map(|p| p.sigs.in_flight(p.vpid)).collect(),
+            signals: self
+                .procs
+                .iter()
+                .filter(|p| p.is_leader())
+                .flat_map(|p| p.sigs.in_flight(p.vpid))
+                .collect(),
             timers: self
                 .timers
                 .iter()
@@ -2280,7 +3053,7 @@ impl<'a> Engine<'a> {
                     fire_at: *at,
                 })
                 .collect(),
-            sync: Vec::new(),
+            sync: self.sync_view(),
         });
         self.t = t;
     }
@@ -2289,7 +3062,7 @@ impl<'a> Engine<'a> {
         let alive: Vec<(u32, &FdTable)> = self
             .procs
             .iter()
-            .filter(|p| p.alive())
+            .filter(|p| p.is_leader() && p.proc_alive())
             .map(|p| (p.vpid, &p.fds))
             .collect();
         let reading: Vec<(u32, String)> = self
@@ -2327,11 +3100,20 @@ impl<'a> Engine<'a> {
     // ---------- cierre ----------
 
     fn kill_all(&mut self) {
-        for p in &self.procs {
-            if !p.alive() {
-                continue;
-            }
+        let pending: Vec<&Proc> = self
+            .procs
+            .iter()
+            .filter(|p| p.proc_alive() && (p.state != PState::Gone || p.is_leader()))
+            .collect();
+        for p in &pending {
             let _ = nix::sys::signal::kill(p.pid, Signal::SIGKILL);
+        }
+        // El kernel no informa la muerte del hilo principal hasta que se recogen los demás hilos.
+        for p in pending
+            .iter()
+            .filter(|p| !p.is_leader())
+            .chain(pending.iter().filter(|p| p.is_leader()))
+        {
             loop {
                 match waitpid(p.pid, Some(WaitPidFlag::__WALL)) {
                     Ok(WaitStatus::Exited(..)) | Ok(WaitStatus::Signaled(..)) | Err(_) => break,
@@ -2358,9 +3140,9 @@ impl<'a> Engine<'a> {
                     None => Outcome::Truncated,
                 };
             }
-            End::AwaitingInput(vpid) => {
-                self.push_final_event(Event::StdinNeeded { pid: vpid, tid: vpid });
-                trace.outcome = Outcome::AwaitingInput { pid: vpid, tid: vpid };
+            End::AwaitingInput(pid, tid) => {
+                self.push_final_event(Event::StdinNeeded { pid, tid });
+                trace.outcome = Outcome::AwaitingInput { pid, tid };
             }
             End::Deadlock(tasks) => {
                 self.push_final_event(Event::Deadlock { tasks: tasks.clone() });
@@ -2419,7 +3201,7 @@ fn is_fatal(sig: Signal) -> bool {
     )
 }
 
-fn call_summary(name: &str, args: &[u64; 3], tracee: &Tracee) -> Option<String> {
+fn call_summary(name: &str, args: &[u64; 4], tracee: &Tracee) -> Option<String> {
     Some(match name {
         "malloc" => format!("malloc({})", args[0]),
         "calloc" => format!("calloc({}, {})", args[0], args[1]),
@@ -2436,4 +3218,12 @@ fn call_summary(name: &str, args: &[u64; 3], tracee: &Tracee) -> Option<String> 
         }
         _ => return None,
     })
+}
+
+/// Un `void *` como lo muestra la traza: el argumento y el valor de retorno de un hilo.
+fn pointer_value(v: u64) -> Value {
+    Value::Scalar {
+        value: Scalar::Number(v.into()),
+        repr: Some(if v == 0 { "NULL".into() } else { hex(v) }),
+    }
 }

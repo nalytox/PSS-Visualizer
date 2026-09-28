@@ -1,9 +1,19 @@
 // Controles de ejecución (sección 10).
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Pause, Play, SkipBack, SkipForward, Footprints, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Pause, Play, SkipBack, SkipForward, Footprints, Zap, Dices } from 'lucide-react';
 import { threadLabel, type TraceIndex } from '../trace/query.ts';
 import { SPEEDS, type Player } from './usePlayer.ts';
 
-export function Controls({ player, index, onCtrlC }: { player: Player; index: TraceIndex; onCtrlC?: () => void }) {
+type PolicyName = 'round_robin' | 'random' | 'manual';
+
+export function Controls(props: {
+  player: Player;
+  index: TraceIndex;
+  onCtrlC?: () => void;
+  policy: PolicyName;
+  seed: number;
+  onPolicy?: (policy: PolicyName, seed?: number) => void;
+}) {
+  const { player, index, onCtrlC, policy, seed, onPolicy } = props;
   const atStart = player.t === 0;
   const atEnd = player.t === player.last;
   return (
@@ -53,6 +63,20 @@ export function Controls({ player, index, onCtrlC }: { player: Player; index: Tr
         <Zap size={16} />
         <span>Ctrl+C</span>
       </button>
+      <label className="speed policy" title={onPolicy ? 'Quién avanza en cada paso' : 'Cambiar la planificación necesita el servidor local'}>
+        <span>Planificación</span>
+        <select value={policy} disabled={!onPolicy} onChange={(e) => onPolicy?.(e.target.value as PolicyName)}>
+          <option value="round_robin">Round-robin</option>
+          <option value="random">Aleatoria</option>
+          <option value="manual">Manual</option>
+        </select>
+      </label>
+      {policy === 'random' && (
+        <button type="button" className="thread-step" disabled={!onPolicy} onClick={() => onPolicy?.('random')} title="Vuelve a ejecutar con otra semilla" aria-label="Otra semilla">
+          <Dices size={16} />
+          <span>semilla {seed}</span>
+        </button>
+      )}
       <label className="speed">
         <span>Velocidad</span>
         <select value={player.speed} onChange={(e) => player.setSpeed(Number(e.target.value))}>

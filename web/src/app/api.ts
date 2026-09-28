@@ -1,11 +1,16 @@
 // Cliente del servidor local (crates/server).
-import type { Trace } from '../trace/types.ts';
+import type { TaskRef, Trace } from '../trace/types.ts';
+
+type Policy = Trace['run']['policy'];
 
 export interface RunRequest {
   source: string;
   stdin: string;
   stdinEof: boolean;
   injections?: { t: number; signal: string }[];
+  policy?: Policy;
+  seed?: number;
+  schedule?: TaskRef[];
 }
 
 export async function serverAvailable(): Promise<boolean> {

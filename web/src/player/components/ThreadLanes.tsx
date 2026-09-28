@@ -10,7 +10,7 @@ import { mutexColor, threadInk, tipProps, useScene } from '../SceneContext.tsx';
 
 const HANDLER_LIFT = 11;
 
-function reasonShort(r: BlockReason, label: (tid: number) => string): string {
+function reasonShort(r: BlockReason, label: (tid: number) => string, names: Map<string, string> = new Map()): string {
   switch (r.kind) {
     case 'read':
       return r.stdin ? 'read stdin' : `read ${r.pipe ?? 'fd ' + r.fd}`;
@@ -21,7 +21,7 @@ function reasonShort(r: BlockReason, label: (tid: number) => string): string {
     case 'join':
       return `join ${label(r.tid)}`;
     case 'mutex':
-      return 'mutex';
+      return `mutex ${names.get(r.id) ?? ''}`.trim();
     case 'cond':
       return 'cond wait';
     case 'sem':
@@ -59,6 +59,7 @@ export function ThreadLanes({ box, animate }: { box: BoxLayout; animate: boolean
   const lanesBottom = laneY(box.lanes.length - 1) + LANE_H / 2;
   const nowX = x0 + (t - t0) * COL_W + COL_W / 2;
   const current = trace.steps[t];
+  const syncNames = new Map(current.sync.flatMap((o) => (o.name ? [[o.id, o.name] as [string, string]] : [])));
 
   return (
     <g className="lanes">
@@ -126,7 +127,7 @@ export function ThreadLanes({ box, animate }: { box: BoxLayout; animate: boolean
 
       {/* Columna "ahora": qué hará cada hilo o por qué espera */}
       {box.lanes.map((tid, i) => (
-        <NowCell key={`now-${tid}`} tid={tid} y={laneY(i)} x={x0 + WINDOW * COL_W + 10} th={stateAt(t, tid)} step={current} reasonShort={(r) => reasonShort(r, label)} ink={ink(tid)} pid={pid} laneOf={laneOf} laneY={laneY} nowX={nowX} />
+        <NowCell key={`now-${tid}`} tid={tid} y={laneY(i)} x={x0 + WINDOW * COL_W + 10} th={stateAt(t, tid)} step={current} reasonShort={(r) => reasonShort(r, label, syncNames)} ink={ink(tid)} pid={pid} laneOf={laneOf} laneY={laneY} nowX={nowX} />
       ))}
     </g>
   );
@@ -324,11 +325,21 @@ function NowCell(props: {
     );
   }
   const running = step.actor?.tid === tid;
+  const chooser = ctx.choose && (th.state === 'ready' || th.state === 'running') && (
+    <g
+      className="choose"
+      {...tipProps(ctx, { title: 'Que avance este', body: 'Modo manual: se vuelve a ejecutar y este hilo da el siguiente paso.' }, { onClick: () => ctx.choose!({ pid, tid }) })}
+    >
+      <circle cx={x + w + 14} cy={y} r={10} />
+      <path d={`M${x + w + 10},${y - 5} L${x + w + 19},${y} L${x + w + 10},${y + 5} z`} />
+    </g>
+  );
   const image = processAt(step, pid)?.image;
   if (image?.kind === 'blackbox' && th.line === null) {
     const name = image.argv[0] ?? image.path;
     return (
       <g {...tipProps(ctx, { title: `Ejecuta ${image.path}`, body: 'Un programa sin símbolos: no hay líneas que seguir, solo su salida y sus syscalls.' })}>
+        {chooser}
         <rect x={x} y={y - 11} width={w} height={22} rx={11} className={running ? 'now-running' : 'now-ready'} style={running ? { stroke: ink } : undefined} />
         <rect x={x + 9} y={y - 5} width={10} height={10} rx={2} className="now-blackbox" />
         <text x={x + 25} y={y + 4} className={`now-text${running ? ' strong' : ''}`}>
@@ -340,12 +351,15 @@ function NowCell(props: {
   const line = th.line;
   const label = `${line ?? '?'} · ${excerpt(index, line, 18)}`;
   return (
-    <g {...tipProps(ctx, { title: `Próxima línea: ${line ?? '?'}`, body: excerpt(index, line, 80) })}>
+    <g>
+      {chooser}
+      <g {...tipProps(ctx, { title: `Próxima línea: ${line ?? '?'}`, body: excerpt(index, line, 80) })}>
       <rect x={x} y={y - 11} width={w} height={22} rx={11} className={running ? 'now-running' : 'now-ready'} style={running ? { stroke: ink } : undefined} />
       {th.inHandler && <Zap x={x + 5} y={y - 7} width={14} height={14} className="now-icon" />}
       <text x={x + (th.inHandler ? 22 : 9)} y={y + 4} className={`now-text code${running ? ' strong' : ''}`}>
         {label}
       </text>
+      </g>
     </g>
   );
 }

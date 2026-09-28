@@ -103,3 +103,18 @@ test('Ctrl+C reejecuta con SIGINT desde el paso actual y el handler corta el buc
   await page.keyboard.press('End');
   await expect(terminal(page)).toContainText('me interrumpiste en la vuelta 2');
 });
+
+test('en modo manual se elige qué hilo avanza y el cambio viaja en la URL', async ({ page }) => {
+  await page.goto('/#ejemplo=12_hilos_carrera&t=0');
+  await waitForTrace(page);
+  await page.getByLabel('Planificación').selectOption('manual');
+  await expect(page).toHaveURL(/plan=manual/, { timeout: 20_000 });
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
+  await expect(counter(page)).toHaveText('4');
+  const choosers = page.locator('g.choose');
+  await expect(choosers.first()).toBeVisible();
+  // Elegir el último hilo listo: la ejecución se repite hasta aquí y ese hilo da el paso 5.
+  await choosers.last().click();
+  await expect(page).toHaveURL(/orden=/, { timeout: 20_000 });
+  await expect(counter(page)).toHaveText('5');
+});

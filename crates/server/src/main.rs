@@ -75,6 +75,19 @@ struct RunRequest {
     /// Señales de la terminal (Ctrl+C) que llegan después de un paso.
     #[serde(default)]
     injections: Vec<InjectionRequest>,
+    /// round_robin, random o manual (como en la traza).
+    #[serde(default)]
+    policy: Option<String>,
+    #[serde(default)]
+    seed: u64,
+    #[serde(default)]
+    schedule: Vec<TaskRequest>,
+}
+
+#[derive(Deserialize)]
+struct TaskRequest {
+    pid: u32,
+    tid: u32,
 }
 
 #[derive(Deserialize)]
@@ -135,6 +148,25 @@ async fn run(State(state): State<Arc<AppState>>, Json(req): Json<RunRequest>) ->
         .kill_on_drop(true);
     if req.stdin_eof {
         cmd.arg("--stdin-eof");
+    }
+    match req.policy.as_deref() {
+        None | Some("round_robin") => {}
+        Some(p @ ("random" | "manual")) => {
+            cmd.arg("--policy").arg(p).arg("--seed").arg(req.seed.to_string());
+        }
+        Some(_) => {
+            let _ = tokio::fs::remove_dir_all(&dir).await;
+            return error(StatusCode::BAD_REQUEST, "política inválida");
+        }
+    }
+    if !req.schedule.is_empty() {
+        let list: Vec<String> = req
+            .schedule
+            .iter()
+            .take(20_000)
+            .map(|t| format!("{}:{}", t.pid, t.tid))
+            .collect();
+        cmd.arg("--schedule").arg(list.join(","));
     }
     for inj in req.injections.iter().take(32) {
         let valid = inj.signal.len() <= 12

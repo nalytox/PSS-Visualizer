@@ -1820,3 +1820,20 @@ button.run:hover:not(:disabled) {
   stroke: var(--purple);
   stroke-width: 1.5;
 }
+
+.choose {
+  cursor: pointer;
+}
+
+.choose circle {
+  fill: var(--purple);
+}
+
+.choose path {
+  fill: var(--surface);
+}
+
+.choose:hover circle,
+.choose:focus circle {
+  filter: drop-shadow(0 0 4px var(--glow));
+}

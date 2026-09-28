@@ -21,6 +21,9 @@ fn trace_example(name: &str) -> serde_json::Value {
         stdin_eof: false,
         limits,
         injections: vec![],
+        policy: trace_model::Policy::RoundRobin,
+        seed: 0,
+        schedule: vec![],
     });
     serde_json::to_value(&trace).unwrap()
 }
@@ -256,6 +259,9 @@ fn ctrl_c_is_injected_after_the_chosen_step() {
         stdin_eof: false,
         limits: Limits::default(),
         injections: vec![(12, libc_sigint())],
+        policy: trace_model::Policy::RoundRobin,
+        seed: 0,
+        schedule: vec![],
     });
     let v = serde_json::to_value(&trace).unwrap();
     assert_eq!(outputs(&v), [(1000, "me interrumpiste en la vuelta 2\n".to_string())]);
@@ -266,6 +272,103 @@ fn ctrl_c_is_injected_after_the_chosen_step() {
     assert_eq!(v["steps"][13]["events"][0]["from"]["kind"], "terminal");
     // Hasta el paso 12 la traza es la misma que sin Ctrl+C.
     assert_eq!(v["steps"][12], t["steps"][12]);
+}
+
+fn run_example(
+    name: &str,
+    policy: trace_model::Policy,
+    seed: u64,
+    schedule: Vec<trace_model::TaskRef>,
+) -> serde_json::Value {
+    let source = std::fs::read_to_string(root().join("examples").join(format!("{name}.c"))).unwrap();
+    let trace = run(&Options {
+        source,
+        stdin: vec![],
+        stdin_eof: false,
+        limits: Limits::default(),
+        injections: vec![],
+        policy,
+        seed,
+        schedule,
+    });
+    serde_json::to_value(&trace).unwrap()
+}
+
+fn task(pid: u32, tid: u32) -> trace_model::TaskRef {
+    trace_model::TaskRef { pid, tid }
+}
+
+#[test]
+fn race_loses_updates_and_a_manual_schedule_avoids_it() {
+    let t = check("12_hilos_carrera");
+    let out = outputs(&t);
+    assert!(out[0].1.starts_with("contador = 3 "), "{out:?}");
+    // Hilos visibles: dos creaciones, dos fines de hilo con join.
+    assert_eq!(events_of(&t, "threadCreate").len(), 2);
+    assert_eq!(events_of(&t, "join").len(), 2);
+    // Manual: main crea los dos hilos, luego corre A entero y después B.
+    let mut schedule = vec![task(1000, 1000), task(1000, 1000)];
+    schedule.extend(std::iter::repeat_n(task(1000, 1001), 20));
+    schedule.extend(std::iter::repeat_n(task(1000, 1002), 20));
+    let m = run_example("12_hilos_carrera", trace_model::Policy::Manual, 0, schedule);
+    assert!(outputs(&m)[0].1.starts_with("contador = 6 "), "{:?}", outputs(&m));
+    assert_eq!(m["run"]["policy"], "manual");
+}
+
+#[test]
+fn mutex_serializes_and_shows_the_wait() {
+    let t = check("13_hilos_mutex");
+    assert_eq!(outputs(&t), [(1000, "contador = 6\n".to_string())]);
+    let blocked = events_of(&t, "mutex")
+        .iter()
+        .filter(|e| e["result"] == "blocked")
+        .count();
+    assert!(blocked > 0, "algún hilo tuvo que esperar el mutex");
+    let with_owner = t["steps"].as_array().unwrap().iter().any(|s| {
+        s["sync"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|o| o["kind"] == "mutex" && o["name"] == "candado" && !o["owner"].is_null())
+    });
+    assert!(with_owner);
+}
+
+#[test]
+fn producer_consumer_passes_every_item() {
+    let t = check("14_productor_consumidor");
+    let items: Vec<String> = outputs(&t).into_iter().map(|(_, s)| s).collect();
+    assert_eq!(
+        items,
+        [
+            "consum\u{c3}\u{ad} 1\n",
+            "consum\u{c3}\u{ad} 2\n",
+            "consum\u{c3}\u{ad} 3\n",
+            "consum\u{c3}\u{ad} 4\n"
+        ]
+    );
+    assert!(events_of(&t, "cond").iter().any(|e| e["op"] == "signal"));
+}
+
+#[test]
+fn two_mutexes_in_opposite_order_deadlock() {
+    let t = check("15_deadlock");
+    assert_eq!(outcome(&t), "deadlock");
+    let last = t["steps"].as_array().unwrap().last().unwrap();
+    let threads = last["processes"][0]["threads"].as_array().unwrap();
+    let waiting: Vec<&str> = threads
+        .iter()
+        .filter_map(|th| th["blockedOn"]["kind"].as_str())
+        .collect();
+    assert_eq!(waiting, ["join", "mutex", "mutex"]);
+}
+
+#[test]
+fn random_policy_is_reproducible_with_its_seed() {
+    let a = run_example("12_hilos_carrera", trace_model::Policy::Random, 7, vec![]);
+    let b = run_example("12_hilos_carrera", trace_model::Policy::Random, 7, vec![]);
+    assert_eq!(a, b);
+    assert_eq!(a["run"]["seed"], 7);
 }
 
 fn libc_sigint() -> i32 {
@@ -286,6 +389,9 @@ fn compile_errors_come_back_with_their_line() {
         stdin_eof: true,
         limits: Limits::default(),
         injections: vec![],
+        policy: trace_model::Policy::RoundRobin,
+        seed: 0,
+        schedule: vec![],
     });
     assert!(matches!(t.outcome, trace_model::Outcome::CompileError));
     assert!(
@@ -308,6 +414,9 @@ fn infinite_loops_are_truncated() {
         stdin_eof: true,
         limits,
         injections: vec![],
+        policy: trace_model::Policy::RoundRobin,
+        seed: 0,
+        schedule: vec![],
     });
     assert!(
         t.truncated,
@@ -329,6 +438,9 @@ fn segfault_is_reported() {
         stdin_eof: true,
         limits: Limits::default(),
         injections: vec![],
+        policy: trace_model::Policy::RoundRobin,
+        seed: 0,
+        schedule: vec![],
     });
     assert!(
         matches!(&t.outcome, trace_model::Outcome::Signaled { signal } if signal == "SIGSEGV"),
@@ -349,6 +461,9 @@ fn output_before_exit_is_captured_and_attributed() {
         stdin_eof: true,
         limits: Limits::default(),
         injections: vec![],
+        policy: trace_model::Policy::RoundRobin,
+        seed: 0,
+        schedule: vec![],
     });
     let all: String = t.output.iter().map(|c| c.bytes.clone()).collect();
     assert_eq!(all, "ab\n");
@@ -373,6 +488,10 @@ fn every_reference_trace_matches_the_schema() {
         "09_sigusr1",
         "10_sigchld",
         "11_sigint",
+        "12_hilos_carrera",
+        "13_hilos_mutex",
+        "14_productor_consumidor",
+        "15_deadlock",
     ] {
         let t = trace_example(name);
         let errors: Vec<String> = validator.iter_errors(&t).take(3).map(|e| e.to_string()).collect();

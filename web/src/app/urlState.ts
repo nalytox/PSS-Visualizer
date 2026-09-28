@@ -7,6 +7,9 @@ export interface UrlState {
   stdin?: string;
   eof?: boolean;
   ctrlc?: number[]; // pasos después de los cuales se presionó Ctrl+C
+  policy?: 'random' | 'manual';
+  seed?: number;
+  schedule?: { pid: number; tid: number }[];
   t: number;
 }
 
@@ -25,6 +28,11 @@ export async function readHash(): Promise<UrlState> {
   state.eof = params.get('eof') === '1';
   const ctrlc = (params.get('ctrlc') ?? '').split(',').filter(Boolean).map(Number).filter((n) => Number.isInteger(n) && n >= 0);
   if (ctrlc.length > 0) state.ctrlc = ctrlc;
+  const plan = params.get('plan');
+  if (plan === 'random' || plan === 'manual') state.policy = plan;
+  if (params.get('semilla')) state.seed = Number(params.get('semilla')) || 0;
+  const sched = (params.get('orden') ?? '').split(',').filter(Boolean).map((x) => x.split('.').map(Number));
+  if (sched.length > 0 && sched.every((x) => x.length === 2 && x.every(Number.isInteger))) state.schedule = sched.map(([pid, tid]) => ({ pid, tid }));
   return state;
 }
 
@@ -36,6 +44,9 @@ export async function writeHash(s: UrlState): Promise<void> {
   if (s.stdin) params.set('stdin', await deflate(s.stdin));
   if (s.eof) params.set('eof', '1');
   if (s.ctrlc && s.ctrlc.length > 0) params.set('ctrlc', s.ctrlc.join(','));
+  if (s.policy) params.set('plan', s.policy);
+  if (s.policy === 'random') params.set('semilla', String(s.seed ?? 0));
+  if (s.schedule && s.schedule.length > 0) params.set('orden', s.schedule.map((x) => `${x.pid}.${x.tid}`).join(','));
   params.set('t', String(s.t));
   const hash = '#' + params.toString();
   if (window.location.hash !== hash) window.history.replaceState(null, '', hash);

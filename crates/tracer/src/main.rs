@@ -8,7 +8,7 @@ use std::io::Write;
 
 fn usage() -> ! {
     eprintln!(
-        "uso: pss-tracer --source prog.c [--stdin archivo] [--stdin-eof] [--limits archivo] [--inject t:SIGINT] [--out archivo]"
+        "uso: pss-tracer --source prog.c [--stdin archivo] [--stdin-eof] [--limits archivo] [--inject t:SIGINT] [--policy round-robin|random|manual] [--seed N] [--schedule pid:tid,…] [--out archivo]"
     );
     std::process::exit(2);
 }
@@ -20,6 +20,9 @@ fn main() {
     let mut limits = limits::Limits::default();
     let mut out = None;
     let mut injections = Vec::new();
+    let mut policy = trace_model::Policy::RoundRobin;
+    let mut seed = 0;
+    let mut schedule = Vec::new();
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -35,6 +38,30 @@ fn main() {
                 limits = limits::Limits::parse(&text).unwrap_or_else(|e| fail(&e));
             }
             "--out" => out = Some(args.next().unwrap_or_else(|| usage())),
+            "--policy" => {
+                policy = match args.next().as_deref() {
+                    Some("round-robin") => trace_model::Policy::RoundRobin,
+                    Some("random") => trace_model::Policy::Random,
+                    Some("manual") => trace_model::Policy::Manual,
+                    _ => usage(),
+                }
+            }
+            "--seed" => seed = args.next().and_then(|v| v.parse().ok()).unwrap_or_else(|| usage()),
+            "--schedule" => {
+                let spec = args.next().unwrap_or_else(|| usage());
+                schedule = spec
+                    .split(',')
+                    .filter(|x| !x.is_empty())
+                    .map(|x| {
+                        let (p, t) = x.split_once(':')?;
+                        Some(trace_model::TaskRef {
+                            pid: p.parse().ok()?,
+                            tid: t.parse().ok()?,
+                        })
+                    })
+                    .collect::<Option<Vec<_>>>()
+                    .unwrap_or_else(|| fail(&format!("planificación inválida: {spec}")));
+            }
             "--inject" => {
                 let spec = args.next().unwrap_or_else(|| usage());
                 injections.push(parse_injection(&spec).unwrap_or_else(|| fail(&format!("inyección inválida: {spec}"))));
@@ -50,6 +77,9 @@ fn main() {
         stdin_eof,
         limits,
         injections,
+        policy,
+        seed,
+        schedule,
     });
     let json = serde_json::to_string(&trace).unwrap();
     match out {

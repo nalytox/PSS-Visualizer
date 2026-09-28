@@ -44,6 +44,8 @@ pub const SYS_RT_SIGACTION: u64 = libc::SYS_rt_sigaction as u64;
 pub const SYS_RT_SIGPROCMASK: u64 = libc::SYS_rt_sigprocmask as u64;
 pub const SYS_RT_SIGRETURN: u64 = libc::SYS_rt_sigreturn as u64;
 pub const SYS_ALARM: u64 = libc::SYS_alarm as u64;
+pub const SYS_FUTEX: u64 = libc::SYS_futex as u64;
+pub const SYS_EXIT: u64 = libc::SYS_exit as u64;
 pub const SYS_PAUSE: u64 = libc::SYS_pause as u64;
 pub const SYS_RT_SIGSUSPEND: u64 = libc::SYS_rt_sigsuspend as u64;
 

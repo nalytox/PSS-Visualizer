@@ -29,7 +29,17 @@ const MAX_K = 2.5;
 // Zoom mínimo del encuadre automático: por debajo, el texto de la memoria deja de leerse.
 const FIT_MIN_K = 0.8;
 
-export function Canvas({ trace, index, player }: { trace: Trace; index: TraceIndex; player: Player }) {
+export function Canvas({
+  trace,
+  index,
+  player,
+  onChoose,
+}: {
+  trace: Trace;
+  index: TraceIndex;
+  player: Player;
+  onChoose?: (task: { pid: number; tid: number }) => void;
+}) {
   const wrap = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 800, h: 600 });
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
@@ -169,7 +179,10 @@ export function Canvas({ trace, index, player }: { trace: Trace; index: TraceInd
     [],
   );
 
-  const ctx: SceneCtx = useMemo(() => ({ trace, index, player, showTip, hideTip, toggleMem }), [trace, index, player, showTip, hideTip, toggleMem]);
+  const ctx: SceneCtx = useMemo(
+    () => ({ trace, index, player, showTip, hideTip, toggleMem, choose: onChoose }),
+    [trace, index, player, showTip, hideTip, toggleMem, onChoose],
+  );
 
   const hidden = hiddenCapsules(player.anim ? trace.steps[player.anim.step] : step, player.anim?.dir ?? 1, animating);
   const forkedFrom = new Map<number, number>();
