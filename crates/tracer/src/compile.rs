@@ -22,12 +22,15 @@ const FLAGS: &[&str] = &[
     "-Wl,-z,now",
 ];
 // Ubuntu firma las direcciones de retorno por defecto (PAC); las claves cambian en cada ejecución,
-// así que el stack no sería reproducible ni se podría recorrer leyendo x30 guardado.
+// así que el stack no sería reproducible ni se podría recorrer leyendo x30 guardado. Además, sin
+// -mno-omit-leaf-frame-pointer las funciones hoja no guardan frame pointer y x29 sigue apuntando
+// al frame del llamador.
 #[cfg(target_arch = "aarch64")]
 const FLAGS: &[&str] = &[
     "-g",
     "-O0",
     "-fno-omit-frame-pointer",
+    "-mno-omit-leaf-frame-pointer",
     "-mbranch-protection=none",
     "-pthread",
     "-no-pie",
