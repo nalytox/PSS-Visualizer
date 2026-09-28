@@ -41,7 +41,7 @@ export function TerminalPanel({ trace, index, t }: { trace: Trace; index: TraceI
         {lines.length === 0 && <div className="terminal-empty">Todavía no se imprimió nada.</div>}
         {lines.map((l, i) => (
           <div key={i} className={`terminal-line${l.stderr ? ' stderr' : ''}${l.t === t ? ' fresh' : ''}`}>
-            <span className="terminal-pid" style={{ borderColor: inkOf(index, l.pid), color: inkOf(index, l.pid) }}>
+            <span className="terminal-pid" style={{ borderColor: inkOf(index, l.pid) }}>
               {l.pid}
             </span>
             <span className="terminal-text">{l.text}</span>

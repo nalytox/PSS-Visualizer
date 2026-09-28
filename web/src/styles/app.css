@@ -533,6 +533,12 @@ button:disabled {
   touch-action: none;
 }
 
+.timeline-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+}
+
 .timeline-rail,
 .timeline-fill {
   position: absolute;
@@ -1837,3 +1843,126 @@ button.run:hover:not(:disabled) {
 .choose:focus circle {
   filter: drop-shadow(0 0 4px var(--glow));
 }
+
+/* ---------- introducción (sección 11) ---------- */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  /* Sin backdrop-filter: el desenfoque bajaba la animación a ~20 fps sin GPU. */
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+}
+
+.intro:focus {
+  outline: none;
+}
+
+.intro-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(1040px, 100%);
+  max-height: 100%;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-lift);
+}
+
+.intro-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.intro-chapters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.intro-chapters button {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.intro-chapters button.active {
+  border-color: var(--purple);
+  background: var(--purple-soft);
+}
+
+.intro-stage {
+  width: 100%;
+  height: auto;
+  max-height: 62vh;
+  border-radius: var(--radius-panel);
+  background: var(--bg);
+}
+
+.intro-caption {
+  min-height: 3em;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--text);
+  text-align: center;
+}
+
+.intro-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.intro-controls > button:not(.run) {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.intro-controls > button.primary {
+  background: var(--purple);
+  color: #fff;
+}
+
+.intro-controls > button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.intro-progress {
+  flex: 1;
+  min-width: 160px;
+  accent-color: var(--purple);
+}
+
+.intro-frames {
+  min-width: 48px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.intro-try {
+  margin-left: auto;
+}
+

@@ -12,10 +12,23 @@ import { indexTrace, threadAt, threadLabel } from '../trace/query.ts';
 import type { Diagnostic, TaskRef, Trace } from '../trace/types.ts';
 import { runProgram, serverAvailable } from './api.ts';
 import { blankProgram, examples } from './examples.ts';
+import { Intro } from '../intro/Intro.tsx';
 import { StdinPanel } from './StdinPanel.tsx';
 import { TerminalPanel } from './TerminalPanel.tsx';
 import { readHash, writeHash, type UrlState } from './urlState.ts';
 import { useTheme } from './useTheme.ts';
+
+const INTRO_SEEN = 'pss-intro-visto';
+
+// Se abre sola en la primera visita, salvo que se llegue con un enlace a un programa o traza.
+function firstVisit(): boolean {
+  if (window.location.hash.length > 1) return false;
+  try {
+    return !localStorage.getItem(INTRO_SEEN);
+  } catch {
+    return false;
+  }
+}
 
 const newSeed = () => Math.floor(Math.random() * 1_000_000);
 
@@ -63,6 +76,7 @@ function docFromUrl(u: UrlState): Doc {
 
 function Workspace({ initial }: { initial: UrlState }) {
   const [server, setServer] = useState<Server>('checking');
+  const [intro, setIntro] = useState(firstVisit);
   const [doc, setDoc] = useState<Doc>(() => docFromUrl(initial));
   const [mode, setMode] = useState<'edit' | 'view'>('edit');
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -206,8 +220,29 @@ function Workspace({ initial }: { initial: UrlState }) {
           }
         : undefined,
   };
-  if (loaded) return <WithTrace key={loaded.key} loaded={loaded} {...shared} />;
-  return <WithoutTrace {...shared} />;
+  const closeIntro = () => {
+    setIntro(false);
+    try {
+      localStorage.setItem(INTRO_SEEN, '1');
+    } catch {
+      // Sin almacenamiento, la introducción volverá a abrirse en la próxima visita.
+    }
+  };
+  const body = loaded ? <WithTrace key={loaded.key} loaded={loaded} {...shared} onIntro={() => setIntro(true)} /> : <WithoutTrace {...shared} onIntro={() => setIntro(true)} />;
+  return (
+    <>
+      {body}
+      {intro && (
+        <Intro
+          onClose={closeIntro}
+          onTry={(id) => {
+            closeIntro();
+            pick(`ej:${id}`);
+          }}
+        />
+      )}
+    </>
+  );
 }
 
 interface Shared {
@@ -228,6 +263,7 @@ interface Shared {
   onCtrlC?: (t: number) => void;
   onPolicy?: (policy: 'round_robin' | 'random' | 'manual', seed?: number) => void;
   onChoose?: (t: number, actors: TaskRef[], chosen: TaskRef) => void;
+  onIntro?: () => void;
 }
 
 function WithTrace(props: Shared & { loaded: Loaded }) {
@@ -398,7 +434,7 @@ function Layout(
           {props.server === 'offline' && <span className="server-off">Sin servidor local: solo trazas grabadas</span>}
         </p>
         <div className="topbar-actions">
-          <button type="button" className="ghost" disabled title="La introducción animada llega en la fase 6">
+          <button type="button" className="ghost" onClick={props.onIntro} title="Cuatro animaciones breves: forks, hilos, pipes y señales">
             <GraduationCap size={16} /> Introducción
           </button>
           <button

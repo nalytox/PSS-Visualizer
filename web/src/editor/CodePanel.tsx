@@ -198,5 +198,10 @@ export function CodePanel(props: {
 }
 
 function editableExt(editable: boolean): Extension {
-  return [EditorState.readOnly.of(!editable), EditorView.editable.of(editable)];
+  // Sin edición el contenido no recibe foco: se hace enfocable para poder desplazarlo con el teclado.
+  return [
+    EditorState.readOnly.of(!editable),
+    EditorView.editable.of(editable),
+    ...(editable ? [] : [EditorView.contentAttributes.of({ tabindex: '0' })]),
+  ];
 }

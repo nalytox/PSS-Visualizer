@@ -14,7 +14,7 @@
   --orange-soft: #ffe6d3;
   --orange: #ffb385;
   --text: #3b2e5a;
-  --text-2: #796d95; /* spec: #7A6E96; oscurecido un paso para cumplir AA sobre --bg */
+  --text-2: #716590; /* spec: #7A6E96; oscurecido para cumplir AA también sobre --surface-2 */
 
   /* Superficies derivadas */
   --surface-2: #f5f1fe;

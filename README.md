@@ -6,11 +6,11 @@ Programación de Sistemas: `fork`, `exec`, `wait`, `pipe`, `dup2`, señales, `pt
 
 Todo corre en tu computador. No se sube código a ningún servidor.
 
-> **Estado: fase 5.** Compila y traza programas con varios procesos (`fork`, `exec` como caja
+> **Estado: fase 6.** Compila y traza programas con varios procesos (`fork`, `exec` como caja
 > negra, `wait`, zombies y huérfanos), pipes con `dup2`, señales (handlers, máscaras, SIGCHLD, alarm
 > y Ctrl+C) e hilos (mutex, variables de condición, semáforos, deadlock y planificación round-robin,
-> aleatoria o manual), con memoria completa y entrada estándar. Falta el modo introducción (fase 6)
-> y arm64 (fase 7); ver `docs/fases/`.
+> aleatoria o manual), con memoria completa y entrada estándar. Incluye el modo introducción con
+> cuatro capítulos animados. Falta arm64 (fase 7); ver `docs/fases/`.
 
 ## Cómo ejecutarlo
 
@@ -40,6 +40,9 @@ errores de gcc aparecen en su línea. La entrada estándar se escribe antes de e
 programa pide más de lo que hay, la animación se detiene y te deja escribir más (o enviar EOF), y
 la ejecución continúa desde ese mismo paso. Sin marcar "Terminar con EOF", al acabarse la entrada
 el programa espera como lo haría en una terminal.
+
+La primera vez se abre una introducción de cuatro capítulos (forks, hilos, pipes y señales); después
+está en el botón **Introducción** de la barra superior.
 
 ## Controles
 
@@ -71,6 +74,7 @@ web/             interfaz: Vite + React + TypeScript
   src/trace/              tipos generados del esquema, consultas y textos por paso
   src/player/             reproductor SVG: procesos, carriles, tubos, señales, memoria
   src/editor/             panel de código (CodeMirror 6)
+  src/intro/              modo introducción: motor determinista y los cuatro capítulos
 tools/synth/     guiones que generan las trazas sintéticas
 traces/          trazas sintéticas (fase 0) y de referencia de cada ejemplo (CI las compara)
 config/          límites de ejecución (sección 13)

@@ -86,13 +86,6 @@ export function Timeline({ trace, index, player }: { trace: Trace; index: TraceI
       <div
         ref={bar}
         className="timeline-track"
-        role="slider"
-        tabIndex={0}
-        aria-label="Línea de tiempo"
-        aria-valuemin={0}
-        aria-valuemax={player.last}
-        aria-valuenow={player.t}
-        aria-valuetext={`Paso ${player.t} de ${player.last}`}
         onPointerDown={(e) => {
           if ((e.target as HTMLElement).closest('button')) return;
           scrub(e.clientX);
@@ -102,8 +95,21 @@ export function Timeline({ trace, index, player }: { trace: Trace; index: TraceI
           if (e.buttons === 1 && !(e.target as HTMLElement).closest('button')) scrub(e.clientX);
         }}
       >
-        <div className="timeline-rail" />
-        <div className="timeline-fill" style={{ width: pct(player.t) }} />
+        {/* El deslizador y los marcadores son hermanos: un control interactivo no puede contener otros. */}
+        <div
+          className="timeline-slider"
+          role="slider"
+          tabIndex={0}
+          aria-label="Línea de tiempo"
+          aria-valuemin={0}
+          aria-valuemax={player.last}
+          aria-valuenow={player.t}
+          aria-valuetext={`Paso ${player.t} de ${player.last}`}
+        >
+          <div className="timeline-rail" />
+          <div className="timeline-fill" style={{ width: pct(player.t) }} />
+          <div className="timeline-thumb" style={{ left: pct(player.t) }} />
+        </div>
         {markers.map(({ s, m }) => {
           const Icon = m.icon;
           const text = describeStep(trace, index, s)[0] ?? m.label;
@@ -121,7 +127,6 @@ export function Timeline({ trace, index, player }: { trace: Trace; index: TraceI
             </button>
           );
         })}
-        <div className="timeline-thumb" style={{ left: pct(player.t) }} />
       </div>
     </div>
   );

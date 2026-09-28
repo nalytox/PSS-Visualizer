@@ -38,6 +38,7 @@ describe.each([
     ['text', 'surface-2'],
     ['text-2', 'surface'],
     ['text-2', 'bg'],
+    ['text-2', 'surface-2'],
     ['text', 'changed'],
     ['text', 'blocked-soft'],
     ['text', 'orange-soft'],
