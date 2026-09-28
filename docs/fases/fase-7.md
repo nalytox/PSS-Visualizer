@@ -31,14 +31,20 @@
 - x86_64: 60 pruebas de Rust (se agregaron setitimer, ppoll y el CFA desde `.eh_frame`), 146
   unitarias de la interfaz y 47 de extremo a extremo. Todas las trazas de referencia siguen
   idénticas: el cambio no alteró el comportamiento en x86_64.
-- aarch64: el tracer y el modelo compilan y pasan `clippy -D warnings` para
-  `aarch64-unknown-linux-gnu`.
+- aarch64: todas las pruebas de Rust pasan en el runner `ubuntu-24.04-arm` de CI (hardware arm64
+  real), incluidas las de determinismo (dos corridas iguales dan la misma traza).
+- Lo que apareció al correr en arm64 real, ya corregido:
+  - en `-O0` gcc deja el CFA relativo a `sp`; el desplazamiento respecto de `x29` se saca de donde
+    se guardó el frame pointer (antes se suponía `fp + 16` y se envenenaba la dirección de
+    retorno: SIGBUS al volver de `main`);
+  - las funciones hoja no guardan frame pointer sin `-mno-omit-leaf-frame-pointer`;
+  - Ubuntu firma las direcciones de retorno (PAC) con claves distintas en cada ejecución; se
+    compila con `-mbranch-protection=none`.
+- De paso, en la interfaz: con la CPU lenta se perdían teclas (React llegaba a su límite de
+  actualizaciones anidadas); hay una prueba de extremo a extremo con la CPU 8 veces más lenta.
 
 ## Pendiente
 
-- **No se pudo ejecutar en arm64 real en esta sesión**: el entorno es x86_64 y ptrace no funciona bajo
-  qemu-user. La primera corrida del job `ubuntu-24.04-arm` de CI es la verificación real. Si el
-  repositorio es privado y su plan no incluye runners arm64, hay que correr `cargo test` en una
-  máquina arm64 (una Raspberry Pi 4/5 con Linux de 64 bits o un Mac con Apple Silicon usando
-  Docker).
-- Después, agregar al repositorio las referencias de `traces/reference/aarch64/` que genera ese job.
+- Agregar al repositorio las referencias de `traces/reference/aarch64/`: el job de arm64 las sube
+  como artefacto `referencias-aarch64` (esta sesión no pudo descargarlo). Mientras falten, en arm64
+  cada ejemplo valida sus propiedades y el determinismo, pero no se compara byte a byte.
