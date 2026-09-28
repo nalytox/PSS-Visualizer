@@ -11,10 +11,24 @@ pub const BINARY_NAME: &str = "prog";
 // -O0 y frame pointer: cada línea corresponde a instrucciones reconocibles y las variables viven en
 // el stack. -z now resuelve las funciones de biblioteca al cargar, así el salto por la PLT va
 // directo a la función real.
+#[cfg(target_arch = "x86_64")]
 const FLAGS: &[&str] = &[
     "-g",
     "-O0",
     "-fno-omit-frame-pointer",
+    "-pthread",
+    "-no-pie",
+    "-Wall",
+    "-Wl,-z,now",
+];
+// Ubuntu firma las direcciones de retorno por defecto (PAC); las claves cambian en cada ejecución,
+// así que el stack no sería reproducible ni se podría recorrer leyendo x30 guardado.
+#[cfg(target_arch = "aarch64")]
+const FLAGS: &[&str] = &[
+    "-g",
+    "-O0",
+    "-fno-omit-frame-pointer",
+    "-mbranch-protection=none",
     "-pthread",
     "-no-pie",
     "-Wall",

@@ -77,6 +77,47 @@ fn outcome(t: &serde_json::Value) -> &str {
     t["outcome"]["kind"].as_str().unwrap()
 }
 
+/// Rutas donde difieren dos trazas (las primeras): el volcado de assert_eq no cabe en los logs.
+fn diffs(a: &serde_json::Value, b: &serde_json::Value, path: String, out: &mut Vec<String>) {
+    use serde_json::Value;
+    if out.len() >= 8 || a == b {
+        return;
+    }
+    match (a, b) {
+        (Value::Object(x), Value::Object(y)) => {
+            for k in x.keys().chain(y.keys().filter(|k| !x.contains_key(*k))) {
+                diffs(&x[k], y.get(k).unwrap_or(&Value::Null), format!("{path}.{k}"), out);
+            }
+        }
+        (Value::Array(x), Value::Array(y)) if x.len() == y.len() => {
+            for (k, (u, v)) in x.iter().zip(y).enumerate() {
+                diffs(u, v, format!("{path}[{k}]"), out);
+            }
+        }
+        _ => {
+            let short = |v: &Value| v.to_string().chars().take(300).collect::<String>();
+            out.push(format!("{path}: {} != {}", short(a), short(b)));
+        }
+    }
+}
+
+fn assert_same(a: &serde_json::Value, b: &serde_json::Value) {
+    let mut out = Vec::new();
+    diffs(a, b, String::new(), &mut out);
+    assert!(out.is_empty(), "las trazas difieren:\n{}", out.join("\n"));
+}
+
+/// Si el programa murió por una señal, los últimos pasos dicen dónde.
+fn assert_exited(t: &serde_json::Value) {
+    if outcome(t) != "exited" {
+        let steps = t["steps"].as_array().unwrap();
+        for s in &steps[steps.len().saturating_sub(3)..] {
+            eprintln!("{}", s.to_string().chars().take(3000).collect::<String>());
+        }
+        panic!("terminó con {}", t["outcome"]);
+    }
+}
+
 #[test]
 fn structs() {
     let t = check("01_structs");
@@ -93,7 +134,7 @@ fn structs() {
 #[test]
 fn linked_list_reports_leaks() {
     let t = check("02_lista_enlazada");
-    assert_eq!(outcome(&t), "exited");
+    assert_exited(&t);
     let leaks = t["summary"]["leaks"].as_array().unwrap();
     assert_eq!(leaks.len(), 3, "4 nodos, 1 liberado");
     assert!(leaks.iter().all(|l| l["type"] == "struct nodo"));
@@ -397,7 +438,7 @@ fn two_mutexes_in_opposite_order_deadlock() {
 fn random_policy_is_reproducible_with_its_seed() {
     let a = run_example("12_hilos_carrera", trace_model::Policy::Random, 7, vec![]);
     let b = run_example("12_hilos_carrera", trace_model::Policy::Random, 7, vec![]);
-    assert_eq!(a, b);
+    assert_same(&a, &b);
     assert_eq!(a["run"]["seed"], 7);
 }
 
@@ -407,8 +448,8 @@ fn libc_sigint() -> i32 {
 
 #[test]
 fn same_input_gives_the_same_trace() {
-    assert_eq!(trace_example("02_lista_enlazada"), trace_example("02_lista_enlazada"));
-    assert_eq!(trace_example("04_fork_bucle"), trace_example("04_fork_bucle"));
+    assert_same(&trace_example("02_lista_enlazada"), &trace_example("02_lista_enlazada"));
+    assert_same(&trace_example("04_fork_bucle"), &trace_example("04_fork_bucle"));
 }
 
 #[test]

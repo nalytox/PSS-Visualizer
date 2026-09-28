@@ -80,6 +80,8 @@ export function usePlayer(trace: Trace, initialT = 0): Player {
         setAnim(null);
         setProgress(1);
       }
+      // Dos teclas antes del siguiente render deben sumar dos pasos, no leer el mismo t.
+      tRef.current = to;
       setT(to);
     },
     [last, speed],
