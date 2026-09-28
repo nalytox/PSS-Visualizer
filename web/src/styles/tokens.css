@@ -1,0 +1,178 @@
+/*
+ * Tokens de diseño (sección 12 del spec). Único lugar donde se definen colores, radios,
+ * sombras, tipografías y tiempos: el editor, el reproductor y la introducción los comparten.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* 12.1 Paleta base */
+  --bg: #fbf9ff;
+  --surface: #ffffff;
+  --purple-soft: #d9ccfa;
+  --purple: #9b7fd9;
+  --orange-soft: #ffe6d3;
+  --orange: #ffb385;
+  --text: #3b2e5a;
+  --text-2: #796d95; /* spec: #7A6E96; oscurecido un paso para cumplir AA sobre --bg */
+
+  /* Superficies derivadas */
+  --surface-2: #f5f1fe;
+  --border: #e6ddfb;
+  --grid: #efe9fd;
+
+  /* 12.2 Colores con significado */
+  --running: var(--purple);
+  --blocked: #ffb385;
+  --blocked-soft: #fff0e4;
+  --changed: #ffe3c2;
+  --capsule: #ffb385;
+  --capsule-text: #3b2e5a;
+  --sig-user: #a9b8f5;
+  --sig-error: #f4a09a;
+  --sig-kill: #e8766e;
+  --danger: #d9534f;
+  --stderr: #c2413b;
+  --success: #3f9c74;
+
+  /* Ocho tonos de proceso: fondo pastel (con texto --text encima) y tinta para líneas y cursores. */
+  --proc-0: #e6e0fa; --proc-0-ink: #8c7ad9;  /* lavanda */
+  --proc-1: #ebd9f7; --proc-1-ink: #a974d1;  /* lila */
+  --proc-2: #efd4e9; --proc-2-ink: #b3639f;  /* ciruela clara */
+  --proc-3: #ffe0cc; --proc-3-ink: #e0875a;  /* durazno */
+  --proc-4: #ffeac9; --proc-4-ink: #cf9435;  /* albaricoque */
+  --proc-5: #fbdde6; --proc-5-ink: #d9798f;  /* rosa pálido */
+  --proc-6: #e4d5ef; --proc-6-ink: #9471b4;  /* malva */
+  --proc-7: #d4f0e4; --proc-7-ink: #4fa983;  /* menta suave */
+
+  /* Colores de mutex (subrayado de carriles) */
+  --mutex-0: #9b7fd9;
+  --mutex-1: #e0875a;
+  --mutex-2: #4fa983;
+  --mutex-3: #d9798f;
+
+  /* Resaltado de código */
+  --code-keyword: #6c4fc1;
+  --code-type: #8c3f79;
+  --code-string: #a34f25;
+  --code-number: #25795a;
+  --code-macro: #7a6e96;
+  --code-fn: #3b2e5a;
+
+  /* 12.3 Forma */
+  --radius-box: 14px;
+  --radius-panel: 12px;
+  --radius-pill: 999px;
+  --shadow-soft: 0 6px 20px rgba(91, 74, 138, 0.12);
+  --shadow-lift: 0 10px 28px rgba(91, 74, 138, 0.18);
+  --glow: rgba(155, 127, 217, 0.35);
+
+  /* Tipografía */
+  --font-ui: 'Nunito', 'Quicksand', system-ui, sans-serif;
+  --font-code: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Movimiento: 200 a 400 ms con easing suave */
+  --dur-fast: 200ms;
+  --dur: 300ms;
+  --dur-slow: 400ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tema oscuro: se aplica con data-theme="dark" o, sin elección explícita, según el sistema. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1f1a2e;
+  --surface: #2a2340;
+  --purple-soft: #5b4a8a;
+  --purple: #b9a3f0;
+  --orange-soft: #5a3e33;
+  --orange: #ffb98f;
+  --text: #ede7fa;
+  --text-2: #a99fc2;
+  --surface-2: #332b4d;
+  --border: #443a66;
+  --grid: #342c50;
+  --blocked: #ffb98f;
+  --blocked-soft: #4a3530;
+  --changed: #6b4b2e;
+  --capsule: #ffb98f;
+  --capsule-text: #2a2340;
+  --danger: #f4a09a;
+  --stderr: #f4a09a;
+  --success: #8fd9b6;
+  --proc-0: #3a3262; --proc-0-ink: #b9a3f0;
+  --proc-1: #44305c; --proc-1-ink: #d1a8f0;
+  --proc-2: #4b2d49; --proc-2-ink: #e0a3cf;
+  --proc-3: #5a3c31; --proc-3-ink: #ffb98f;
+  --proc-4: #54432b; --proc-4-ink: #f2c987;
+  --proc-5: #57334a; --proc-5-ink: #f5a9c0;
+  --proc-6: #45385c; --proc-6-ink: #c4a6de;
+  --proc-7: #2b4a41; --proc-7-ink: #8fd9b6;
+  --mutex-0: #b9a3f0;
+  --mutex-1: #ffb98f;
+  --mutex-2: #8fd9b6;
+  --mutex-3: #f5a9c0;
+  --code-keyword: #c6b3ff;
+  --code-type: #f0a9dc;
+  --code-string: #ffc49e;
+  --code-number: #93e0bd;
+  --code-macro: #a99fc2;
+  --code-fn: #ede7fa;
+  --shadow-soft: 0 6px 20px rgba(0, 0, 0, 0.3);
+  --shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.4);
+  --glow: rgba(185, 163, 240, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #1f1a2e;
+    --surface: #2a2340;
+    --purple-soft: #5b4a8a;
+    --purple: #b9a3f0;
+    --orange-soft: #5a3e33;
+    --orange: #ffb98f;
+    --text: #ede7fa;
+    --text-2: #a99fc2;
+    --surface-2: #332b4d;
+    --border: #443a66;
+    --grid: #342c50;
+    --blocked: #ffb98f;
+    --blocked-soft: #4a3530;
+    --changed: #6b4b2e;
+    --capsule: #ffb98f;
+    --capsule-text: #2a2340;
+    --danger: #f4a09a;
+    --stderr: #f4a09a;
+    --success: #8fd9b6;
+    --proc-0: #3a3262; --proc-0-ink: #b9a3f0;
+    --proc-1: #44305c; --proc-1-ink: #d1a8f0;
+    --proc-2: #4b2d49; --proc-2-ink: #e0a3cf;
+    --proc-3: #5a3c31; --proc-3-ink: #ffb98f;
+    --proc-4: #54432b; --proc-4-ink: #f2c987;
+    --proc-5: #57334a; --proc-5-ink: #f5a9c0;
+    --proc-6: #45385c; --proc-6-ink: #c4a6de;
+    --proc-7: #2b4a41; --proc-7-ink: #8fd9b6;
+    --mutex-0: #b9a3f0;
+    --mutex-1: #ffb98f;
+    --mutex-2: #8fd9b6;
+    --mutex-3: #f5a9c0;
+    --code-keyword: #c6b3ff;
+    --code-type: #f0a9dc;
+    --code-string: #ffc49e;
+    --code-number: #93e0bd;
+    --code-macro: #a99fc2;
+    --code-fn: #ede7fa;
+    --shadow-soft: 0 6px 20px rgba(0, 0, 0, 0.3);
+    --shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.4);
+    --glow: rgba(185, 163, 240, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+    --dur-slow: 0ms;
+  }
+}

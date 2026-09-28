@@ -1,0 +1,12 @@
+[package]
+name = "pss-server"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+axum = "0.8.9"
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+tower-http = { version = "0.7.1", features = ["fs"] }

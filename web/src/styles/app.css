@@ -1,0 +1,1489 @@
+/* Estilos de la aplicación. Todos los colores salen de tokens.css. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* En C se escribe "->" y "<=": las ligaduras de la fuente los convertirían en símbolos que no se tipean. */
+.cm-editor,
+.memory,
+.console-line,
+.now-text,
+.port-text,
+.capsule,
+.terminal-body,
+.stdin-body {
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'calt' 0;
+}
+
+:focus-visible {
+  outline: 3px solid var(--purple);
+  outline-offset: 2px;
+}
+
+svg :focus-visible {
+  outline: none;
+}
+
+svg [tabindex]:focus-visible > :first-child,
+svg [tabindex]:focus-visible rect:first-of-type {
+  stroke: var(--purple);
+  stroke-width: 3px;
+}
+
+.loading,
+.fatal {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--text-2);
+  font-size: 16px;
+}
+
+/* ---------- estructura ---------- */
+
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  min-width: 1280px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.brand p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.logo-a {
+  fill: var(--proc-0);
+  stroke: var(--purple);
+  stroke-width: 2;
+}
+
+.logo-b {
+  fill: var(--proc-3);
+  stroke: var(--orange);
+  stroke-width: 2;
+}
+
+.logo-pipe {
+  stroke: var(--purple);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.logo-dot {
+  fill: var(--orange);
+}
+
+.trace-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+select {
+  appearance: none;
+  background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239b7fd9' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 6px 30px 6px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.trace-summary {
+  flex: 1;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+button.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+button.ghost.icon {
+  padding: 7px;
+}
+
+button.ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 430px 1fr;
+  min-height: 0;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  min-height: 0;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-soft);
+  padding: 10px 12px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--orange-soft);
+  color: var(--text);
+}
+
+.code-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 320px;
+  min-height: 260px;
+}
+
+.code-host {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.code-host .cm-editor {
+  height: 100%;
+}
+
+.cm-executed {
+  background: color-mix(in srgb, var(--purple-soft) 55%, transparent);
+  box-shadow: inset 3px 0 0 var(--purple);
+}
+
+.cm-next {
+  background: var(--orange-soft);
+  box-shadow: inset 3px 0 0 var(--orange);
+}
+
+.cm-hover {
+  background: color-mix(in srgb, var(--purple-soft) 30%, transparent);
+  outline: 1px dashed var(--purple);
+}
+
+.cm-thread-gutter {
+  min-width: 26px;
+  cursor: pointer;
+}
+
+.pss-thread-cursors {
+  display: inline-flex;
+  gap: 2px;
+  padding: 0 3px;
+  align-items: center;
+  height: 100%;
+}
+
+.pss-thread-cursor {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink);
+  opacity: 0.8;
+}
+
+.pss-thread-cursor.running {
+  width: 0;
+  height: 0;
+  border-radius: 0;
+  background: none;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 10px solid var(--ink);
+  opacity: 1;
+}
+
+.cm-lineNumbers .cm-gutterElement {
+  cursor: pointer;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sw {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.sw.executed {
+  background: var(--purple-soft);
+  box-shadow: inset 3px 0 0 var(--purple);
+}
+
+.sw.next {
+  background: var(--orange-soft);
+  box-shadow: inset 3px 0 0 var(--orange);
+}
+
+.narration {
+  background: var(--surface);
+  border-left: 4px solid var(--purple);
+  min-height: 64px;
+}
+
+.narration p {
+  margin: 2px 0;
+  line-height: 1.45;
+  font-size: 14px;
+}
+
+.narration p + p {
+  margin-top: 6px;
+}
+
+.terminal-body {
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  min-height: 48px;
+  max-height: 140px;
+  overflow: auto;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.terminal-empty,
+.stdin-empty {
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+
+.terminal-line {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 1px 0;
+  border-radius: 4px;
+}
+
+.terminal-line.fresh {
+  animation: fresh 1.2s var(--ease);
+}
+
+.terminal-line.stderr .terminal-text {
+  color: var(--stderr);
+}
+
+.terminal-pid {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 0 6px;
+  border: 1.5px solid;
+  border-radius: var(--radius-pill);
+  flex: none;
+}
+
+.terminal-text {
+  white-space: pre-wrap;
+}
+
+.stdin-body {
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.stdin-consumed {
+  color: var(--text-2);
+  text-decoration: line-through;
+}
+
+.stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.bottombar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 20px 12px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- controles ---------- */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-group {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+}
+
+.btn-group button,
+.thread-step {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.btn-group button:hover:not(:disabled) {
+  background: var(--purple-soft);
+}
+
+.btn-group button.primary {
+  background: var(--purple);
+  color: #fff;
+  width: 44px;
+}
+
+:root[data-theme='dark'] .btn-group button.primary {
+  color: #1f1a2e;
+}
+
+.thread-step {
+  display: inline-flex;
+  width: auto;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.thread-step:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.step-counter {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.step-counter strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+/* ---------- línea de tiempo ---------- */
+
+.timeline-track {
+  position: relative;
+  height: 34px;
+  margin: 0 12px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.timeline-rail,
+.timeline-fill {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  right: 0;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--grid);
+}
+
+.timeline-fill {
+  right: auto;
+  background: var(--purple-soft);
+}
+
+.timeline-thumb {
+  position: absolute;
+  top: 7px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border-radius: 50%;
+  background: var(--purple);
+  border: 3px solid var(--surface);
+  box-shadow: var(--shadow-soft);
+  pointer-events: none;
+  transition: left var(--dur-fast) var(--ease);
+}
+
+.marker {
+  position: absolute;
+  top: 5px;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 0;
+  z-index: 1;
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.marker:hover {
+  transform: scale(1.15);
+}
+
+.marker.past {
+  color: var(--text);
+}
+
+.marker.proc.past {
+  border-color: var(--purple);
+}
+
+.marker.data.past {
+  border-color: var(--orange);
+}
+
+.marker.signal {
+  background: color-mix(in srgb, var(--sig-user) 35%, var(--surface));
+}
+
+.marker.sync.past {
+  border-color: var(--mutex-0);
+}
+
+.marker.blocked {
+  background: var(--blocked-soft);
+}
+
+.marker.danger {
+  background: var(--sig-error);
+}
+
+.marker.current {
+  opacity: 0;
+}
+
+/* ---------- lienzo ---------- */
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+  background-image: radial-gradient(var(--grid) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+
+.canvas:active {
+  cursor: grabbing;
+}
+
+.canvas-svg {
+  display: block;
+  font-family: var(--font-ui);
+}
+
+.viewport {
+  transform-origin: 0 0;
+}
+
+.viewport.smooth {
+  transition: transform var(--dur-slow) var(--ease);
+}
+
+.canvas-svg [tabindex] {
+  cursor: pointer;
+}
+
+.canvas-tools {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.canvas-tools button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.canvas-tools button:hover {
+  background: var(--surface-2);
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 10;
+  transform: translateX(-50%);
+  max-width: 320px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: var(--shadow-lift);
+}
+
+.tooltip-title {
+  font-weight: 800;
+}
+
+.tooltip-body {
+  opacity: 0.9;
+}
+
+/* ---------- procesos ---------- */
+
+.tree-edge {
+  fill: none;
+  stroke: var(--purple-soft);
+  stroke-width: 2.5;
+}
+
+.tree-edge.reaped {
+  stroke-dasharray: 5 6;
+}
+
+.proc-body {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1.5;
+  transition: stroke-width var(--dur) var(--ease);
+}
+
+.proc.running .proc-body {
+  stroke-width: 3.5;
+}
+
+.proc.blocked .proc-body {
+  stroke: var(--blocked);
+  stroke-width: 3;
+}
+
+.proc.zombie .proc-body {
+  stroke-dasharray: 7 6;
+  stroke-width: 2;
+}
+
+.proc.stopped .proc-body {
+  stroke: var(--text-2);
+  stroke-dasharray: 2 5;
+  stroke-width: 2.5;
+}
+
+.proc-body.flash-handler {
+  animation: flash-handler 0.7s var(--ease);
+}
+
+.proc-body.flash-kill {
+  animation: flash-kill 0.7s var(--ease);
+}
+
+.proc-pid {
+  font-size: 16px;
+  font-weight: 800;
+  fill: var(--text);
+}
+
+.proc-ppid {
+  font-size: 11.5px;
+  fill: var(--text);
+  opacity: 0.75;
+}
+
+.proc-divider {
+  stroke: var(--border);
+}
+
+.chip {
+  fill: var(--surface);
+  stroke: var(--border);
+}
+
+.chip.running {
+  fill: var(--purple);
+  stroke: none;
+}
+
+.chip.running + .chip-icon,
+.chip.running ~ .chip-text {
+  color: #fff;
+  fill: #fff;
+}
+
+:root[data-theme='dark'] .chip.running ~ .chip-text,
+:root[data-theme='dark'] .chip.running + .chip-icon {
+  fill: #1f1a2e;
+  color: #1f1a2e;
+}
+
+.chip.blocked {
+  fill: var(--blocked-soft);
+  stroke: var(--blocked);
+}
+
+.chip.zombie {
+  fill: var(--surface-2);
+  stroke-dasharray: 3 3;
+}
+
+.chip-text {
+  font-size: 12px;
+  font-weight: 800;
+  fill: var(--text);
+}
+
+.chip-icon {
+  color: var(--text);
+}
+
+.desaturate {
+  filter: grayscale(0.85);
+  opacity: 0.6;
+}
+
+.proc-silhouette {
+  fill: var(--surface-2);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 5;
+}
+
+.proc-silhouette-text {
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--text-2);
+}
+
+/* ---------- carriles ---------- */
+
+.lane-grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.lane-tick {
+  font-size: 9px;
+  fill: var(--text-2);
+}
+
+.now-line {
+  stroke: var(--purple);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+.now-label {
+  font-size: 10px;
+  font-weight: 800;
+  fill: var(--purple);
+}
+
+.lane-label-bg {
+  fill: transparent;
+  transition: fill var(--dur-fast) var(--ease);
+}
+
+.lane-label:hover .lane-label-bg {
+  fill: var(--surface-2);
+}
+
+.lane-label.selected .lane-label-bg {
+  fill: var(--purple-soft);
+}
+
+.lane-name {
+  font-size: 12px;
+  font-weight: 800;
+  fill: var(--text);
+}
+
+.lane-tid {
+  font-size: 9.5px;
+  fill: var(--text-2);
+}
+
+.lane-run {
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.lane-idle {
+  stroke: var(--text-2);
+  stroke-width: 1.4;
+  stroke-dasharray: 1.5 4;
+  stroke-linecap: round;
+}
+
+.lane-stopped {
+  stroke: var(--text-2);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.lane-blocked {
+  stroke: var(--blocked);
+  stroke-width: 1;
+}
+
+.lane-hold {
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.lane-branch,
+.lane-join {
+  fill: none;
+  stroke-width: 2;
+}
+
+.lane-join {
+  stroke: var(--purple);
+}
+
+.lane-end {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.lane-node-hit {
+  fill: transparent;
+}
+
+.lane-node:hover .lane-node-hit,
+.lane-node:focus .lane-node-hit {
+  fill: var(--purple-soft);
+  opacity: 0.6;
+}
+
+.lane-node-now {
+  stroke: var(--surface);
+  stroke-width: 2;
+  animation: node-pop 0.4s var(--ease);
+}
+
+.lane-line-no {
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--text-2);
+}
+
+.now-running,
+.now-ready {
+  fill: var(--surface-2);
+  stroke: var(--border);
+}
+
+.now-running {
+  stroke-width: 2;
+  fill: var(--surface);
+}
+
+.now-blocked {
+  fill: var(--blocked-soft);
+  stroke: var(--blocked);
+}
+
+.now-icon {
+  color: var(--text);
+}
+
+.now-text {
+  font-size: 11.5px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+.now-text.code {
+  font-family: var(--font-code);
+  font-size: 10.5px;
+  font-weight: 400;
+}
+
+.now-text.strong {
+  font-weight: 600;
+}
+
+.now-text.muted {
+  fill: var(--text-2);
+  font-weight: 600;
+}
+
+.mutex-wait-arrow {
+  fill: none;
+  stroke: var(--text-2);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+
+/* ---------- memoria ---------- */
+
+.mem-toggle-bg {
+  fill: transparent;
+}
+
+.mem-toggle:hover .mem-toggle-bg {
+  fill: var(--surface-2);
+}
+
+.mem-toggle-icon {
+  color: var(--text-2);
+}
+
+.mem-toggle-text {
+  font-size: 12px;
+  font-weight: 800;
+  fill: var(--text-2);
+}
+
+.memory text {
+  font-family: var(--font-code);
+}
+
+.mem-panel {
+  fill: var(--surface-2);
+  stroke: var(--border);
+}
+
+.mem-panel.globals {
+  fill: color-mix(in srgb, var(--orange-soft) 55%, var(--surface));
+}
+
+.mem-panel.handler {
+  fill: color-mix(in srgb, var(--sig-user) 25%, var(--surface));
+  stroke: var(--sig-user);
+}
+
+.mem-title {
+  font-family: var(--font-ui) !important;
+  font-size: 12px;
+  font-weight: 800;
+  fill: var(--text);
+}
+
+.mem-sub {
+  font-weight: 600;
+  fill: var(--text-2);
+  font-size: 10.5px;
+}
+
+.mem-heap {
+  fill: var(--surface);
+  stroke: var(--purple-soft);
+  stroke-width: 1.5;
+}
+
+.mem-heap.freed {
+  fill: var(--surface-2);
+  stroke: var(--text-2);
+  stroke-dasharray: 4 3;
+}
+
+.mem-heap.leak {
+  stroke: var(--orange);
+  stroke-width: 2;
+}
+
+.mem-chip {
+  font-family: var(--font-ui) !important;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.mem-chip.freed {
+  fill: var(--text-2);
+}
+
+.mem-chip.leak {
+  fill: var(--stderr);
+}
+
+.mem-name {
+  font-size: 11px;
+  fill: var(--text);
+}
+
+.mem-cell {
+  fill: var(--surface);
+  stroke: var(--border);
+  transition: fill var(--dur) var(--ease);
+}
+
+.mem-cell.uninit {
+  fill: var(--surface-2);
+  stroke-dasharray: 2 2;
+}
+
+.mem-cell.changed {
+  fill: var(--changed);
+  stroke: var(--orange);
+}
+
+.mem-value {
+  font-size: 11px;
+  fill: var(--text);
+}
+
+.mem-value.uninit {
+  fill: var(--text-2);
+  font-weight: 600;
+}
+
+.mem-value.italic {
+  font-style: italic;
+  fill: var(--text-2);
+}
+
+.mem-index {
+  font-size: 8.5px;
+  fill: var(--text-2);
+}
+
+.mem-box {
+  fill: none;
+  stroke: var(--border);
+}
+
+.mem-label {
+  font-family: var(--font-ui) !important;
+  font-size: 11px;
+  font-weight: 800;
+  fill: var(--text-2);
+}
+
+.mem-dot {
+  fill: var(--text);
+}
+
+.mem-ground line {
+  stroke: var(--text-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.mem-arrow path {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  opacity: 0.8;
+}
+
+.mem-arrow.danger path {
+  stroke: var(--danger);
+  stroke-dasharray: 4 3;
+  opacity: 1;
+}
+
+.mem-cut line {
+  stroke: var(--danger);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.mem-flash {
+  fill: var(--changed);
+  opacity: 0;
+  animation: mem-flash 0.9s var(--ease);
+  pointer-events: none;
+}
+
+/* ---------- consola, puertos ---------- */
+
+.console-bg {
+  fill: var(--surface-2);
+}
+
+.console-label {
+  font-size: 10px;
+  font-weight: 800;
+  fill: var(--text-2);
+}
+
+.console-empty {
+  font-size: 11px;
+  fill: var(--text-2);
+}
+
+.console-line {
+  font-family: var(--font-code);
+  font-size: 11.5px;
+  fill: var(--text);
+  white-space: pre;
+}
+
+.console-line.stderr {
+  fill: var(--stderr);
+}
+
+.console-line.fresh {
+  font-weight: 600;
+}
+
+.port-body {
+  fill: var(--surface);
+  stroke: var(--text-2);
+  stroke-width: 1.5;
+}
+
+.port.pipe-port .port-body {
+  stroke-width: 2.5;
+}
+
+.port.warning .port-body {
+  fill: var(--surface-2);
+  stroke: var(--text-2);
+  stroke-dasharray: 2 2;
+}
+
+.port-text {
+  font-family: var(--font-code);
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--text);
+}
+
+.port-label,
+.tube-end-label,
+.tube-id,
+.tube-level,
+.tube-plug-label {
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.port-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  fill: var(--text-2);
+}
+
+.sig-port-stub {
+  stroke: var(--sig-user);
+  stroke-width: 2.5;
+}
+
+.sig-port-ring {
+  fill: var(--surface);
+  stroke: var(--sig-user);
+  stroke-width: 2.5;
+}
+
+.sig-port-ring.charged {
+  fill: var(--sig-user);
+  animation: charged 1.2s ease-in-out infinite;
+}
+
+.sig-port-core {
+  fill: var(--sig-user);
+}
+
+/* ---------- pipes y cables ---------- */
+
+.cable-halo {
+  fill: none;
+  stroke: var(--bg);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.cable {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.cable.read {
+  stroke-dasharray: 0;
+}
+
+.tube-halo {
+  fill: var(--bg);
+  opacity: 0.8;
+}
+
+.tube-body {
+  fill: color-mix(in srgb, var(--purple-soft) 25%, var(--surface));
+  stroke: var(--purple);
+  stroke-width: 2;
+}
+
+.tube-liquid {
+  fill: var(--orange-soft);
+  opacity: 0.9;
+}
+
+.tube-glass {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+:root[data-theme='dark'] .tube-glass {
+  opacity: 0.18;
+}
+
+.tube-sheen {
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  opacity: 0.6;
+}
+
+.tube-crack {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 2.5;
+}
+
+.tube-end {
+  fill: var(--surface);
+  stroke: var(--purple);
+  stroke-width: 2;
+}
+
+.tube-plug {
+  fill: var(--text-2);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.tube-plug-label {
+  font-size: 10px;
+  font-weight: 800;
+  fill: var(--text-2);
+}
+
+.tube-end-label {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--text-2);
+}
+
+.tube-id {
+  font-size: 14px;
+  font-weight: 800;
+  fill: var(--purple);
+}
+
+.tube-level {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text-2);
+}
+
+.tube-more {
+  font-size: 11px;
+  font-weight: 800;
+  fill: var(--text-2);
+}
+
+.capsule rect {
+  fill: var(--capsule);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+
+.capsule text {
+  font-family: var(--font-code);
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--capsule-text);
+}
+
+.capsule.special rect {
+  fill: var(--text-2);
+}
+
+.capsule.special text {
+  fill: var(--surface);
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+/* ---------- señales ---------- */
+
+.signal-cable {
+  fill: none;
+  stroke: var(--sig-user);
+  stroke-width: 2.5;
+  stroke-dasharray: 8 4 2 4;
+}
+
+.signal.error .signal-cable {
+  stroke: var(--sig-error);
+}
+
+.signal.kill .signal-cable {
+  stroke: var(--sig-kill);
+}
+
+.signal.delivered {
+  opacity: 0.75;
+}
+
+.signal-body {
+  fill: color-mix(in srgb, var(--sig-user) 30%, var(--surface));
+  stroke: var(--sig-user);
+  stroke-width: 2;
+}
+
+.signal.error .signal-body {
+  fill: color-mix(in srgb, var(--sig-error) 30%, var(--surface));
+  stroke: var(--sig-error);
+}
+
+.signal.kill .signal-body {
+  fill: color-mix(in srgb, var(--sig-kill) 25%, var(--surface));
+  stroke: var(--sig-kill);
+}
+
+.signal-double {
+  fill: none;
+  stroke: var(--sig-kill);
+  stroke-width: 2;
+}
+
+.signal-icon-bg {
+  fill: var(--surface);
+}
+
+.signal-icon {
+  color: var(--text);
+}
+
+.signal-name {
+  font-size: 13px;
+  font-weight: 800;
+  fill: var(--text);
+}
+
+.signal-source {
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--text-2);
+}
+
+.pulse-glow {
+  fill: var(--sig-user);
+  opacity: 0.55;
+}
+
+.pulse-bolt {
+  color: var(--text);
+  fill: var(--surface);
+}
+
+/* ---------- animaciones ---------- */
+
+@keyframes fresh {
+  from {
+    background: var(--changed);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+@keyframes mem-flash {
+  0% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes flash-handler {
+  0%,
+  100% {
+    stroke-width: 3.5;
+  }
+  40% {
+    stroke: var(--sig-user);
+    stroke-width: 7;
+  }
+}
+
+@keyframes flash-kill {
+  0%,
+  100% {
+    stroke-width: 3;
+  }
+  40% {
+    stroke: var(--sig-kill);
+    stroke-width: 7;
+  }
+}
+
+@keyframes charged {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes node-pop {
+  from {
+    r: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+}

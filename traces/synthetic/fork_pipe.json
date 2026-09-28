@@ -1,0 +1,4946 @@
+{
+ "version": 1,
+ "arch": "x86_64",
+ "source": "#include <stdio.h>\n#include <string.h>\n#include <sys/wait.h>\n#include <unistd.h>\n\nint main(void) {\n    int fd[2];\n    pipe(fd);\n    pid_t pid = fork();\n    if (pid == 0) {\n        close(fd[0]);\n        char msg[] = \"hola\\n\";\n        write(fd[1], msg, strlen(msg));\n        close(fd[1]);\n        return 0;\n    }\n    close(fd[1]);\n    char buf[16] = {0};\n    int n;\n    while ((n = read(fd[0], buf, sizeof buf - 1)) > 0) {\n        buf[n] = '\\0';\n        printf(\"padre leyó: %s\", buf);\n    }\n    close(fd[0]);\n    int status;\n    wait(&status);\n    printf(\"hijo terminó con %d\\n\", WEXITSTATUS(status));\n    return 0;\n}\n",
+ "stdin": "",
+ "run": {
+  "policy": "manual",
+  "seed": 0,
+  "stdinEof": true,
+  "schedule": [
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   }
+  ],
+  "injections": [],
+  "limits": {
+   "maxProcesses": 32,
+   "maxThreadsPerProcess": 16,
+   "maxSteps": 5000,
+   "wallTimeMs": 10000,
+   "memoryBytes": 268435456,
+   "outputBytesPerProcess": 65536,
+   "traceBytesCompressed": 20971520
+  }
+ },
+ "compile": {
+  "ok": true,
+  "command": "gcc -g -O0 -fno-omit-frame-pointer -pthread -no-pie -o prog prog.c",
+  "diagnostics": []
+ },
+ "outcome": {
+  "kind": "exited",
+  "code": 0
+ },
+ "truncated": false,
+ "steps": [
+  {
+   "t": 0,
+   "actor": null,
+   "choices": [],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 8,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m0"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": []
+  },
+  {
+   "t": 1,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "pipe",
+     "pid": 1000,
+     "pipe": "p0",
+     "fds": [
+      3,
+      4
+     ]
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 9,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m1"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1000,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 8,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 2,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "fork",
+     "parent": 1000,
+     "child": 1001
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 10,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m2"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 10,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m3"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      },
+      {
+       "pid": 1001,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1000,
+       "fd": 4
+      },
+      {
+       "pid": 1001,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 9,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 3,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 10,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m2"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 11,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m4"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      },
+      {
+       "pid": 1001,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1000,
+       "fd": 4
+      },
+      {
+       "pid": 1001,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 10,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 4,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 17,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m5"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 11,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m4"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      },
+      {
+       "pid": 1001,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1000,
+       "fd": 4
+      },
+      {
+       "pid": 1001,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 10,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 5,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "close",
+     "pid": 1001,
+     "fd": 3,
+     "was": {
+      "kind": "pipe",
+      "pipe": "p0",
+      "end": "r"
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 17,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m5"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 12,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m6"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1000,
+       "fd": 4
+      },
+      {
+       "pid": 1001,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 11,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 6,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "close",
+     "pid": 1000,
+     "fd": 4,
+     "was": {
+      "kind": "pipe",
+      "pipe": "p0",
+      "end": "w"
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 18,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m7"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 12,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m6"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1001,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 17,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 7,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 18,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m7"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 13,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1001,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 12,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 8,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 20,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m9"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 13,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1001,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 18,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 9,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "block",
+     "pid": 1000,
+     "tid": 1000,
+     "reason": {
+      "kind": "read",
+      "fd": 3,
+      "pipe": "p0"
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 20,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "read",
+        "fd": 3,
+        "pipe": "p0"
+       },
+       "inCall": "read"
+      }
+     ],
+     "mem": "m9"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 13,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1001,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 20,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 10,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "call",
+     "fn": "strlen",
+     "summary": "strlen(msg) = 5"
+    },
+    {
+     "type": "write",
+     "pid": 1001,
+     "tid": 1001,
+     "fd": 4,
+     "pipe": "p0",
+     "bytes": "hola\n",
+     "n": 5
+    },
+    {
+     "type": "unblock",
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 20,
+       "fn": "main",
+       "holds": [],
+       "inCall": "read"
+      }
+     ],
+     "mem": "m9"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 14,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m10"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 5,
+     "buffer": "hola\n",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1001,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 13,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 11,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "read",
+     "pid": 1000,
+     "tid": 1000,
+     "fd": 3,
+     "pipe": "p0",
+     "bytes": "hola\n",
+     "n": 5,
+     "eof": false,
+     "into": "0x7fffffffc920"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 21,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m11"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "4": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "w"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 14,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m10"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [
+      {
+       "pid": 1001,
+       "fd": 4
+      }
+     ],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 20,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 12,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "close",
+     "pid": 1001,
+     "fd": 4,
+     "was": {
+      "kind": "pipe",
+      "pipe": "p0",
+      "end": "w"
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 21,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m11"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 15,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m12"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 14,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 13,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 22,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m13"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 15,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m12"
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 21,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 14,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "return",
+     "fn": "main",
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "type": "exit",
+     "pid": 1001,
+     "scope": "process",
+     "code": 0
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 22,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m13"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "zombie",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": "m14",
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 15,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 15,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "call",
+     "fn": "printf"
+    },
+    {
+     "type": "write",
+     "pid": 1000,
+     "tid": 1000,
+     "fd": 1,
+     "terminal": true,
+     "bytes": "padre leyÃ³: hola\n",
+     "n": 18
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 20,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m15"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "zombie",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": "m14",
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 22,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 16,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "read",
+     "pid": 1000,
+     "tid": 1000,
+     "fd": 3,
+     "pipe": "p0",
+     "bytes": "",
+     "n": 0,
+     "eof": true,
+     "into": "0x7fffffffc920"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      },
+      "3": {
+       "kind": "pipe",
+       "pipe": "p0",
+       "end": "r"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 24,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m16"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "zombie",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": "m14",
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [
+    {
+     "id": "p0",
+     "createdBy": 1000,
+     "size": 0,
+     "buffer": "",
+     "capacity": 65536,
+     "readers": [
+      {
+       "pid": 1000,
+       "fd": 3
+      }
+     ],
+     "writers": [],
+     "warnings": []
+    }
+   ],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 20,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 17,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "close",
+     "pid": 1000,
+     "fd": 3,
+     "was": {
+      "kind": "pipe",
+      "pipe": "p0",
+      "end": "r"
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 26,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m17"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "zombie",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": "m14",
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 24,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 18,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "wait",
+     "pid": 1000,
+     "target": -1,
+     "reaped": 1001,
+     "status": {
+      "code": 0
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 27,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m18"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "reaped",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": null,
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 26,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 19,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "call",
+     "fn": "printf"
+    },
+    {
+     "type": "write",
+     "pid": 1000,
+     "tid": 1000,
+     "fd": 1,
+     "terminal": true,
+     "bytes": "hijo terminÃ³ con 0\n",
+     "n": 20
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 28,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m19"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "reaped",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": null,
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 27,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 20,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "return",
+     "fn": "main",
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "type": "exit",
+     "pid": 1000,
+     "scope": "process",
+     "code": 0
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "zombie",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": "m20",
+     "exit": {
+      "code": 0
+     }
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "reaped",
+     "createdAt": 2,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": null,
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 28,
+    "fn": "main"
+   }
+  }
+ ],
+ "snapshots": {
+  "m0": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 8,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 0
+          },
+          {
+           "kind": "scalar",
+           "value": 0
+          }
+         ]
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m1": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 9,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m2": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 10,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m3": {
+   "globals": [],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 10,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m4": {
+   "globals": [],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 11,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m5": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 17,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m6": {
+   "globals": [],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 12,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       },
+       {
+        "name": "msg",
+        "type": "char[6]",
+        "addr": "0x7fffffffc920",
+        "size": 6,
+        "value": {
+         "kind": "array",
+         "length": 6,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": ""
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m7": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 18,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       },
+       {
+        "name": "buf",
+        "type": "char[16]",
+        "addr": "0x7fffffffc920",
+        "size": 16,
+        "value": {
+         "kind": "array",
+         "length": 16,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": ""
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m8": {
+   "globals": [],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 13,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       },
+       {
+        "name": "msg",
+        "type": "char[6]",
+        "addr": "0x7fffffffc920",
+        "size": 6,
+        "value": {
+         "kind": "array",
+         "length": 6,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 104,
+           "repr": "'h'"
+          },
+          {
+           "kind": "scalar",
+           "value": 111,
+           "repr": "'o'"
+          },
+          {
+           "kind": "scalar",
+           "value": 108,
+           "repr": "'l'"
+          },
+          {
+           "kind": "scalar",
+           "value": 97,
+           "repr": "'a'"
+          },
+          {
+           "kind": "scalar",
+           "value": 10,
+           "repr": "'\\n'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": "hola\n"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m9": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 20,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       },
+       {
+        "name": "buf",
+        "type": "char[16]",
+        "addr": "0x7fffffffc920",
+        "size": 16,
+        "value": {
+         "kind": "array",
+         "length": 16,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": ""
+        }
+       },
+       {
+        "name": "n",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m10": {
+   "globals": [],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 14,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       },
+       {
+        "name": "msg",
+        "type": "char[6]",
+        "addr": "0x7fffffffc920",
+        "size": 6,
+        "value": {
+         "kind": "array",
+         "length": 6,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 104,
+           "repr": "'h'"
+          },
+          {
+           "kind": "scalar",
+           "value": 111,
+           "repr": "'o'"
+          },
+          {
+           "kind": "scalar",
+           "value": 108,
+           "repr": "'l'"
+          },
+          {
+           "kind": "scalar",
+           "value": 97,
+           "repr": "'a'"
+          },
+          {
+           "kind": "scalar",
+           "value": 10,
+           "repr": "'\\n'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": "hola\n"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m11": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 21,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       },
+       {
+        "name": "buf",
+        "type": "char[16]",
+        "addr": "0x7fffffffc920",
+        "size": 16,
+        "value": {
+         "kind": "array",
+         "length": 16,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 104,
+           "repr": "'h'"
+          },
+          {
+           "kind": "scalar",
+           "value": 111,
+           "repr": "'o'"
+          },
+          {
+           "kind": "scalar",
+           "value": 108,
+           "repr": "'l'"
+          },
+          {
+           "kind": "scalar",
+           "value": 97,
+           "repr": "'a'"
+          },
+          {
+           "kind": "scalar",
+           "value": 10,
+           "repr": "'\\n'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": "hola\n"
+        }
+       },
+       {
+        "name": "n",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 5
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m12": {
+   "globals": [],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 15,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       },
+       {
+        "name": "msg",
+        "type": "char[6]",
+        "addr": "0x7fffffffc920",
+        "size": 6,
+        "value": {
+         "kind": "array",
+         "length": 6,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 104,
+           "repr": "'h'"
+          },
+          {
+           "kind": "scalar",
+           "value": 111,
+           "repr": "'o'"
+          },
+          {
+           "kind": "scalar",
+           "value": 108,
+           "repr": "'l'"
+          },
+          {
+           "kind": "scalar",
+           "value": 97,
+           "repr": "'a'"
+          },
+          {
+           "kind": "scalar",
+           "value": 10,
+           "repr": "'\\n'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": "hola\n"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m13": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 22,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       },
+       {
+        "name": "buf",
+        "type": "char[16]",
+        "addr": "0x7fffffffc920",
+        "size": 16,
+        "value": {
+         "kind": "array",
+         "length": 16,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 104,
+           "repr": "'h'"
+          },
+          {
+           "kind": "scalar",
+           "value": 111,
+           "repr": "'o'"
+          },
+          {
+           "kind": "scalar",
+           "value": 108,
+           "repr": "'l'"
+          },
+          {
+           "kind": "scalar",
+           "value": 97,
+           "repr": "'a'"
+          },
+          {
+           "kind": "scalar",
+           "value": 10,
+           "repr": "'\\n'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": "hola\n"
+        }
+       },
+       {
+        "name": "n",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 5
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m14": {
+   "globals": [],
+   "stacks": {
+    "1001": []
+   },
+   "heap": []
+  },
+  "m15": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 20,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       },
+       {
+        "name": "buf",
+        "type": "char[16]",
+        "addr": "0x7fffffffc920",
+        "size": 16,
+        "value": {
+         "kind": "array",
+         "length": 16,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 104,
+           "repr": "'h'"
+          },
+          {
+           "kind": "scalar",
+           "value": 111,
+           "repr": "'o'"
+          },
+          {
+           "kind": "scalar",
+           "value": 108,
+           "repr": "'l'"
+          },
+          {
+           "kind": "scalar",
+           "value": 97,
+           "repr": "'a'"
+          },
+          {
+           "kind": "scalar",
+           "value": 10,
+           "repr": "'\\n'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": "hola\n"
+        }
+       },
+       {
+        "name": "n",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 5
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m16": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 24,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       },
+       {
+        "name": "buf",
+        "type": "char[16]",
+        "addr": "0x7fffffffc920",
+        "size": 16,
+        "value": {
+         "kind": "array",
+         "length": 16,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 104,
+           "repr": "'h'"
+          },
+          {
+           "kind": "scalar",
+           "value": 111,
+           "repr": "'o'"
+          },
+          {
+           "kind": "scalar",
+           "value": 108,
+           "repr": "'l'"
+          },
+          {
+           "kind": "scalar",
+           "value": 97,
+           "repr": "'a'"
+          },
+          {
+           "kind": "scalar",
+           "value": 10,
+           "repr": "'\\n'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": "hola\n"
+        }
+       },
+       {
+        "name": "n",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m17": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 26,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       },
+       {
+        "name": "buf",
+        "type": "char[16]",
+        "addr": "0x7fffffffc920",
+        "size": 16,
+        "value": {
+         "kind": "array",
+         "length": 16,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 104,
+           "repr": "'h'"
+          },
+          {
+           "kind": "scalar",
+           "value": 111,
+           "repr": "'o'"
+          },
+          {
+           "kind": "scalar",
+           "value": 108,
+           "repr": "'l'"
+          },
+          {
+           "kind": "scalar",
+           "value": 97,
+           "repr": "'a'"
+          },
+          {
+           "kind": "scalar",
+           "value": 10,
+           "repr": "'\\n'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": "hola\n"
+        }
+       },
+       {
+        "name": "n",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       },
+       {
+        "name": "status",
+        "type": "int",
+        "addr": "0x7fffffffc90c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m18": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 27,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       },
+       {
+        "name": "buf",
+        "type": "char[16]",
+        "addr": "0x7fffffffc920",
+        "size": 16,
+        "value": {
+         "kind": "array",
+         "length": 16,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 104,
+           "repr": "'h'"
+          },
+          {
+           "kind": "scalar",
+           "value": 111,
+           "repr": "'o'"
+          },
+          {
+           "kind": "scalar",
+           "value": 108,
+           "repr": "'l'"
+          },
+          {
+           "kind": "scalar",
+           "value": 97,
+           "repr": "'a'"
+          },
+          {
+           "kind": "scalar",
+           "value": 10,
+           "repr": "'\\n'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": "hola\n"
+        }
+       },
+       {
+        "name": "n",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       },
+       {
+        "name": "status",
+        "type": "int",
+        "addr": "0x7fffffffc90c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m19": {
+   "globals": [],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 28,
+      "params": [],
+      "locals": [
+       {
+        "name": "fd",
+        "type": "int[2]",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "array",
+         "length": 2,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 3
+          },
+          {
+           "kind": "scalar",
+           "value": 4
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       },
+       {
+        "name": "buf",
+        "type": "char[16]",
+        "addr": "0x7fffffffc920",
+        "size": 16,
+        "value": {
+         "kind": "array",
+         "length": 16,
+         "items": [
+          {
+           "kind": "scalar",
+           "value": 104,
+           "repr": "'h'"
+          },
+          {
+           "kind": "scalar",
+           "value": 111,
+           "repr": "'o'"
+          },
+          {
+           "kind": "scalar",
+           "value": 108,
+           "repr": "'l'"
+          },
+          {
+           "kind": "scalar",
+           "value": 97,
+           "repr": "'a'"
+          },
+          {
+           "kind": "scalar",
+           "value": 10,
+           "repr": "'\\n'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          },
+          {
+           "kind": "scalar",
+           "value": 0,
+           "repr": "'\\0'"
+          }
+         ],
+         "text": "hola\n"
+        }
+       },
+       {
+        "name": "n",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       },
+       {
+        "name": "status",
+        "type": "int",
+        "addr": "0x7fffffffc90c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m20": {
+   "globals": [],
+   "stacks": {
+    "1000": []
+   },
+   "heap": []
+  }
+ },
+ "output": [
+  {
+   "t": 15,
+   "pid": 1000,
+   "fd": 1,
+   "stream": "stdout",
+   "bytes": "padre leyÃ³: hola\n"
+  },
+  {
+   "t": 19,
+   "pid": 1000,
+   "fd": 1,
+   "stream": "stdout",
+   "bytes": "hijo terminÃ³ con 0\n"
+  }
+ ],
+ "summary": {
+  "leaks": [],
+  "memErrors": []
+ }
+}

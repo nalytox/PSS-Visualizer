@@ -1,0 +1,8697 @@
+{
+ "version": 1,
+ "arch": "x86_64",
+ "source": "#include <pthread.h>\n#include <stdio.h>\n\nint counter = 0;\npthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;\n\nvoid *worker(void *arg) {\n    int id = *(int *)arg;\n    for (int i = 0; i < 2; i++) {\n        pthread_mutex_lock(&lock);\n        counter++;\n        pthread_mutex_unlock(&lock);\n    }\n    printf(\"hilo %d listo\\n\", id);\n    return NULL;\n}\n\nint main(void) {\n    pthread_t t1, t2;\n    int id1 = 1, id2 = 2;\n    pthread_create(&t1, NULL, worker, &id1);\n    pthread_create(&t2, NULL, worker, &id2);\n    pthread_join(t1, NULL);\n    pthread_join(t2, NULL);\n    printf(\"counter = %d\\n\", counter);\n    return 0;\n}\n",
+ "stdin": "",
+ "run": {
+  "policy": "manual",
+  "seed": 0,
+  "stdinEof": true,
+  "schedule": [
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1002
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   }
+  ],
+  "injections": [],
+  "limits": {
+   "maxProcesses": 32,
+   "maxThreadsPerProcess": 16,
+   "maxSteps": 5000,
+   "wallTimeMs": 10000,
+   "memoryBytes": 268435456,
+   "outputBytesPerProcess": 65536,
+   "traceBytesCompressed": 20971520
+  }
+ },
+ "compile": {
+  "ok": true,
+  "command": "gcc -g -O0 -fno-omit-frame-pointer -pthread -no-pie -o prog prog.c",
+  "diagnostics": []
+ },
+ "outcome": {
+  "kind": "exited",
+  "code": 0
+ },
+ "truncated": false,
+ "steps": [
+  {
+   "t": 0,
+   "actor": null,
+   "choices": [],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 20,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m0"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ]
+  },
+  {
+   "t": 1,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 21,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m1"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 20,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 2,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "threadCreate",
+     "pid": 1000,
+     "creator": 1000,
+     "tid": 1001,
+     "fn": "worker",
+     "arg": {
+      "kind": "pointer",
+      "target": "0x7fffffffc910"
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 22,
+       "fn": "main",
+       "holds": []
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 8,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m2"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 21,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 3,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1000,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 22,
+       "fn": "main",
+       "holds": []
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m3"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 8,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 4,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1000,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "threadCreate",
+     "pid": 1000,
+     "creator": 1000,
+     "tid": 1002,
+     "fn": "worker",
+     "arg": {
+      "kind": "pointer",
+      "target": "0x7fffffffc914"
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 23,
+       "fn": "main",
+       "holds": []
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 8,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m4"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 22,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 5,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 23,
+       "fn": "main",
+       "holds": []
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m5"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 8,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 6,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "block",
+     "pid": 1000,
+     "tid": 1000,
+     "reason": {
+      "kind": "join",
+      "tid": 1001
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m5"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 23,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 7,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m6"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 9,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 8,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m7"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 9,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 9,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "lock",
+     "id": "m0",
+     "tid": 1001,
+     "result": "acquired"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 11,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1001,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 10,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 10,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "lock",
+     "id": "m0",
+     "tid": 1002,
+     "result": "blocked"
+    },
+    {
+     "type": "block",
+     "pid": 1000,
+     "tid": 1002,
+     "reason": {
+      "kind": "mutex",
+      "id": "m0",
+      "owner": 1001
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 11,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "blocked",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [],
+       "blockedOn": {
+        "kind": "mutex",
+        "id": "m0",
+        "owner": 1001
+       },
+       "inCall": "pthread_mutex_lock"
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1001,
+     "waiters": [
+      1002
+     ]
+    }
+   ],
+   "executed": {
+    "line": 10,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 11,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 12,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "blocked",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [],
+       "blockedOn": {
+        "kind": "mutex",
+        "id": "m0",
+        "owner": 1001
+       },
+       "inCall": "pthread_mutex_lock"
+      }
+     ],
+     "mem": "m9"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1001,
+     "waiters": [
+      1002
+     ]
+    }
+   ],
+   "executed": {
+    "line": 11,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 12,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "unlock",
+     "id": "m0",
+     "tid": 1001,
+     "result": "released"
+    },
+    {
+     "type": "unblock",
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [],
+       "inCall": "pthread_mutex_lock"
+      }
+     ],
+     "mem": "m10"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": [
+      1002
+     ]
+    }
+   ],
+   "executed": {
+    "line": 12,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 13,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "lock",
+     "id": "m0",
+     "tid": 1002,
+     "result": "acquired"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 11,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      }
+     ],
+     "mem": "m11"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1002,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 10,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 14,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 11,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      }
+     ],
+     "mem": "m12"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1002,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 9,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 15,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 12,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      }
+     ],
+     "mem": "m13"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1002,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 11,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 16,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "lock",
+     "id": "m0",
+     "tid": 1001,
+     "result": "blocked"
+    },
+    {
+     "type": "block",
+     "pid": 1000,
+     "tid": 1001,
+     "reason": {
+      "kind": "mutex",
+      "id": "m0",
+      "owner": 1002
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "blocked",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [],
+       "blockedOn": {
+        "kind": "mutex",
+        "id": "m0",
+        "owner": 1002
+       },
+       "inCall": "pthread_mutex_lock"
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 12,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      }
+     ],
+     "mem": "m13"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1002,
+     "waiters": [
+      1001
+     ]
+    }
+   ],
+   "executed": {
+    "line": 10,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 17,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "unlock",
+     "id": "m0",
+     "tid": 1002,
+     "result": "released"
+    },
+    {
+     "type": "unblock",
+     "pid": 1000,
+     "tid": 1001
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [],
+       "inCall": "pthread_mutex_lock"
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m14"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": [
+      1001
+     ]
+    }
+   ],
+   "executed": {
+    "line": 12,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 18,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "lock",
+     "id": "m0",
+     "tid": 1001,
+     "result": "acquired"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 11,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m15"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1001,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 10,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 19,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 11,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m16"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1001,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 9,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 20,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 12,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m17"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1001,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 11,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 21,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "lock",
+     "id": "m0",
+     "tid": 1002,
+     "result": "blocked"
+    },
+    {
+     "type": "block",
+     "pid": 1000,
+     "tid": 1002,
+     "reason": {
+      "kind": "mutex",
+      "id": "m0",
+      "owner": 1001
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 12,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "blocked",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [],
+       "blockedOn": {
+        "kind": "mutex",
+        "id": "m0",
+        "owner": 1001
+       },
+       "inCall": "pthread_mutex_lock"
+      }
+     ],
+     "mem": "m17"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1001,
+     "waiters": [
+      1002
+     ]
+    }
+   ],
+   "executed": {
+    "line": 10,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 22,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "unlock",
+     "id": "m0",
+     "tid": 1001,
+     "result": "released"
+    },
+    {
+     "type": "unblock",
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 10,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [],
+       "inCall": "pthread_mutex_lock"
+      }
+     ],
+     "mem": "m18"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": [
+      1002
+     ]
+    }
+   ],
+   "executed": {
+    "line": 12,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 23,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "lock",
+     "id": "m0",
+     "tid": 1002,
+     "result": "acquired"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 11,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      }
+     ],
+     "mem": "m19"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1002,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 10,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 24,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 14,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 11,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      }
+     ],
+     "mem": "m20"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1002,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 9,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 25,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 14,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 12,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      }
+     ],
+     "mem": "m21"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1002,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 11,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 26,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "call",
+     "fn": "printf"
+    },
+    {
+     "type": "write",
+     "pid": 1000,
+     "tid": 1001,
+     "fd": 1,
+     "terminal": true,
+     "bytes": "hilo 1 listo\n",
+     "n": 13
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "running",
+       "line": 15,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 12,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [
+        "m0"
+       ]
+      }
+     ],
+     "mem": "m22"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": 1002,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 14,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 27,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "mutex",
+     "op": "unlock",
+     "id": "m0",
+     "tid": 1002,
+     "result": "released"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1001
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "ready",
+       "line": 15,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m23"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 12,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 28,
+   "actor": {
+    "pid": 1000,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1001
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "exit",
+     "pid": 1000,
+     "tid": 1001,
+     "scope": "thread",
+     "retval": {
+      "kind": "pointer",
+      "target": null
+     }
+    },
+    {
+     "type": "unblock",
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [],
+       "retval": {
+        "kind": "pointer",
+        "target": null
+       }
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 9,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m24"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 15,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 29,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 23,
+       "fn": "main",
+       "holds": [],
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1001,
+       "main": false,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       },
+       "holds": [],
+       "retval": {
+        "kind": "pointer",
+        "target": null
+       }
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 14,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m25"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 9,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 30,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "join",
+     "tid": 1000,
+     "target": 1001,
+     "retval": {
+      "kind": "pointer",
+      "target": null
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 24,
+       "fn": "main",
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 14,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m26"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 23,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 31,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "call",
+     "fn": "printf"
+    },
+    {
+     "type": "write",
+     "pid": 1000,
+     "tid": 1002,
+     "fd": 1,
+     "terminal": true,
+     "bytes": "hilo 2 listo\n",
+     "n": 13
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 24,
+       "fn": "main",
+       "holds": []
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "running",
+       "line": 15,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m27"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 14,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 32,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "block",
+     "pid": 1000,
+     "tid": 1000,
+     "reason": {
+      "kind": "join",
+      "tid": 1002
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 24,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "join",
+        "tid": 1002
+       },
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "ready",
+       "line": 15,
+       "fn": "worker",
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": []
+      }
+     ],
+     "mem": "m27"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 24,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 33,
+   "actor": {
+    "pid": 1000,
+    "tid": 1002
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1002
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "exit",
+     "pid": 1000,
+     "tid": 1002,
+     "scope": "thread",
+     "retval": {
+      "kind": "pointer",
+      "target": null
+     }
+    },
+    {
+     "type": "unblock",
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 24,
+       "fn": "main",
+       "holds": [],
+       "inCall": "pthread_join"
+      },
+      {
+       "tid": 1002,
+       "main": false,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "start": {
+        "fn": "worker",
+        "arg": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       },
+       "holds": [],
+       "retval": {
+        "kind": "pointer",
+        "target": null
+       }
+      }
+     ],
+     "mem": "m28"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 15,
+    "fn": "worker"
+   }
+  },
+  {
+   "t": 34,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "join",
+     "tid": 1000,
+     "target": 1002,
+     "retval": {
+      "kind": "pointer",
+      "target": null
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 25,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m29"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 24,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 35,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "call",
+     "fn": "printf"
+    },
+    {
+     "type": "write",
+     "pid": 1000,
+     "tid": 1000,
+     "fd": 1,
+     "terminal": true,
+     "bytes": "counter = 4\n",
+     "n": 12
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 26,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m30"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 25,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 36,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "return",
+     "fn": "main",
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "type": "exit",
+     "pid": 1000,
+     "scope": "process",
+     "code": 0
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "zombie",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": "m31",
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [
+    {
+     "kind": "mutex",
+     "id": "m0",
+     "pid": 1000,
+     "addr": "0x404080",
+     "name": "lock",
+     "owner": null,
+     "waiters": []
+    }
+   ],
+   "executed": {
+    "line": 26,
+    "fn": "main"
+   }
+  }
+ ],
+ "snapshots": {
+  "m0": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 20,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m1": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 21,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m2": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 22,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 8,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m3": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 22,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m4": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 8,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m5": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m6": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m7": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m8": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1001"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 11,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m9": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 1
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1001"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 12,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m10": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 1
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m11": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 1
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1002"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 11,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m12": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 1
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1002"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 11,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m13": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 2
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1002"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 12,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m14": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 2
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m15": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 2
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1001"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 11,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m16": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 2
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1001"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 11,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m17": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 3
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1001"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 12,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m18": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 3
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 10,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m19": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 3
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1002"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff7bfeeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 11,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m20": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 3
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1002"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 14,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 11,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m21": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1002"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 14,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 12,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m22": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "tomado por el hilo 1002"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 15,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 12,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m23": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [
+     {
+      "fn": "worker",
+      "line": 15,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff7bfeea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc910"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff7bfeebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m24": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 9,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       },
+       {
+        "name": "i",
+        "type": "int",
+        "addr": "0x7ffff73fdeb8",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m25": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 23,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1001": [],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 14,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m26": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 24,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 14,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m27": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 24,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1002": [
+     {
+      "fn": "worker",
+      "line": 15,
+      "params": [
+       {
+        "name": "arg",
+        "type": "void *",
+        "addr": "0x7ffff73fdea8",
+        "size": 8,
+        "value": {
+         "kind": "pointer",
+         "target": "0x7fffffffc914"
+        }
+       }
+      ],
+      "locals": [
+       {
+        "name": "id",
+        "type": "int",
+        "addr": "0x7ffff73fdebc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m28": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 24,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ],
+    "1002": []
+   },
+   "heap": []
+  },
+  "m29": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 25,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m30": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 26,
+      "params": [],
+      "locals": [
+       {
+        "name": "t1",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc918",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737349940928,
+         "repr": "0x7ffff7bff6c0"
+        }
+       },
+       {
+        "name": "t2",
+        "type": "pthread_t",
+        "addr": "0x7fffffffc920",
+        "size": 8,
+        "value": {
+         "kind": "scalar",
+         "value": 140737341548224,
+         "repr": "0x7ffff73fe6c0"
+        }
+       },
+       {
+        "name": "id1",
+        "type": "int",
+        "addr": "0x7fffffffc910",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1
+        }
+       },
+       {
+        "name": "id2",
+        "type": "int",
+        "addr": "0x7fffffffc914",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 2
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m31": {
+   "globals": [
+    {
+     "name": "counter",
+     "type": "int",
+     "addr": "0x404060",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 4
+     }
+    },
+    {
+     "name": "lock",
+     "type": "pthread_mutex_t",
+     "addr": "0x404080",
+     "size": 40,
+     "value": {
+      "kind": "opaque",
+      "note": "mutex libre"
+     }
+    }
+   ],
+   "stacks": {
+    "1000": []
+   },
+   "heap": []
+  }
+ },
+ "output": [
+  {
+   "t": 26,
+   "pid": 1000,
+   "fd": 1,
+   "stream": "stdout",
+   "bytes": "hilo 1 listo\n"
+  },
+  {
+   "t": 31,
+   "pid": 1000,
+   "fd": 1,
+   "stream": "stdout",
+   "bytes": "hilo 2 listo\n"
+  },
+  {
+   "t": 35,
+   "pid": 1000,
+   "fd": 1,
+   "stream": "stdout",
+   "bytes": "counter = 4\n"
+  }
+ ],
+ "summary": {
+  "leaks": [],
+  "memErrors": []
+ }
+}

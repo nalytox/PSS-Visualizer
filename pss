@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Lanzador local: compila lo que falte, inicia el servidor y abre el navegador.
+# Uso: ./pss            (puerto 8000)
+#      PSS_PORT=9000 ./pss
+set -euo pipefail
+cd "$(dirname "$0")"
+
+PORT="${PSS_PORT:-8000}"
+URL="http://localhost:${PORT}"
+
+fail() {
+  echo "pss: $*" >&2
+  exit 1
+}
+
+if [ "$(uname -s)" != "Linux" ]; then
+  fail "el modo nativo necesita Linux (o WSL2 en Windows). En macOS usa Docker: docker compose up"
+fi
+command -v cargo >/dev/null || fail "falta Rust: instálalo desde https://rustup.rs"
+command -v npm >/dev/null || fail "falta Node.js 20 o superior: https://nodejs.org"
+
+# La interfaz se recompila solo si cambió algo desde la última vez.
+if [ ! -d web/node_modules ]; then
+  echo "pss: instalando dependencias de la interfaz…"
+  (cd web && npm ci --no-audit --no-fund)
+fi
+if [ ! -f web/dist/index.html ] || [ -n "$(find web/src web/index.html traces schema -newer web/dist/index.html -print -quit)" ]; then
+  echo "pss: compilando la interfaz…"
+  (cd web && npm run build --silent)
+fi
+echo "pss: compilando el servidor…"
+cargo build --release --quiet -p pss-server
+
+open_browser() {
+  sleep 1
+  if command -v wslview >/dev/null; then wslview "$URL"
+  elif grep -qi microsoft /proc/version 2>/dev/null && command -v explorer.exe >/dev/null; then explorer.exe "$URL"
+  elif command -v xdg-open >/dev/null; then xdg-open "$URL"
+  else echo "pss: abre ${URL} en tu navegador"
+  fi
+}
+open_browser >/dev/null 2>&1 &
+
+PSS_PORT="$PORT" PSS_WEB_DIST="web/dist" exec ./target/release/pss-server

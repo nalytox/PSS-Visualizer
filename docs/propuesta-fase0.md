@@ -1,6 +1,6 @@
 # Propuesta fase 0: estructura del repositorio y esquema de traza
 
-Estado: **borrador para confirmar**. No se escribe código hasta que lo apruebes.
+Estado: **aprobado** (27-09-2026). Ver la sección 8 para los ajustes hechos al implementarlo.
 
 Decisiones ya tomadas contigo:
 
@@ -432,3 +432,19 @@ Cada elemento se hace a nivel funcional en la fase 0 y se pule en la fase de su 
 3. Servidor en Rust (axum) en vez de FastAPI. Motivo: al ser local, una persona instala un solo binario y no tiene que armar un entorno de Python. Si prefieres FastAPI, se agrega `api/` en Python y el resto no cambia.
 4. Eliminar el shim `LD_PRELOAD` de malloc (5.1).
 5. Sandbox local por namespaces y límites del tracer, en vez de un contenedor por ejecución (sección 2).
+
+## 8. Ajustes aplicados al implementar la fase 0
+
+Aprobado el 27-09-2026. Al escribir `schema/trace.schema.json` se hicieron estos ajustes, sin cambiar
+la idea del contrato:
+
+- `Field` lleva `size` y `ArrayValue` lleva `length` (largo total; `items` puede traer menos). Sin
+  ellos el reproductor no puede saber a qué celda exacta apunta un puntero. Reemplaza
+  `truncatedFrom`.
+- `Fd`, `BlockReason`, `SignalSource`, `SyncObject`, `ExitStatus`, `ProcessImage` y `SignalAction`
+  son uniones discriminadas (`oneOf`) con `cloexec` dentro de cada variante de `Fd`, para que los
+  tipos de TypeScript y Rust queden exactos.
+- `Leak` y `MemErrorRef` quedaron definidos (en la propuesta solo se nombraban), y `MemErrorRef.kind`
+  suma `doubleFree` e `invalidFree`.
+- Los tipos de Rust (`crates/trace-model`) se escriben a mano y se verifican contra el esquema en
+  las pruebas (lectura y reescritura sin pérdida más validación), en vez de generarse.

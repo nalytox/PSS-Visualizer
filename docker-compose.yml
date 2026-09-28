@@ -1,0 +1,10 @@
+services:
+  pss:
+    build: .
+    image: pss-visualizer
+    # Solo accesible desde este computador.
+    ports:
+      - "127.0.0.1:8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp

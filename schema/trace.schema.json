@@ -1,0 +1,3018 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nalytox/PSS-Visualizer/schema/trace.schema.json",
+  "title": "Trace",
+  "description": "Traza de ejecución de un programa C: lista ordenada de pasos globales con el estado completo del sistema después de cada paso.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "arch",
+    "source",
+    "stdin",
+    "run",
+    "compile",
+    "outcome",
+    "truncated",
+    "steps",
+    "snapshots",
+    "output",
+    "summary"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "arch": {
+      "enum": [
+        "x86_64",
+        "aarch64"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "description": "Código C del programa."
+    },
+    "stdin": {
+      "$ref": "#/$defs/Bytes",
+      "description": "Entrada estándar usada en esta ejecución."
+    },
+    "run": {
+      "$ref": "#/$defs/RunConfig"
+    },
+    "compile": {
+      "$ref": "#/$defs/CompileResult"
+    },
+    "outcome": {
+      "$ref": "#/$defs/Outcome"
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "truncatedReason": {
+      "enum": [
+        "steps",
+        "time",
+        "processes",
+        "threads",
+        "memory",
+        "output",
+        "traceSize"
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Step"
+      }
+    },
+    "snapshots": {
+      "type": "object",
+      "description": "Instantáneas de memoria completas, deduplicadas por contenido. Process.mem apunta aquí.",
+      "propertyNames": {
+        "$ref": "#/$defs/SnapshotId"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/MemorySnapshot"
+      }
+    },
+    "output": {
+      "type": "array",
+      "description": "Registro único de todo lo escrito a la terminal, ordenado por t.",
+      "items": {
+        "$ref": "#/$defs/OutputChunk"
+      }
+    },
+    "summary": {
+      "$ref": "#/$defs/Summary"
+    }
+  },
+  "$defs": {
+    "Bytes": {
+      "title": "Bytes",
+      "description": "Cada carácter U+0000–U+00FF representa exactamente un byte. El frontend decodifica como UTF-8 para mostrar.",
+      "type": "string",
+      "pattern": "^[\\u0000-\\u00FF]*$"
+    },
+    "Addr": {
+      "title": "Addr",
+      "type": "string",
+      "pattern": "^0x[0-9a-f]+$"
+    },
+    "SnapshotId": {
+      "title": "SnapshotId",
+      "type": "string",
+      "pattern": "^m[0-9]+$"
+    },
+    "SignalName": {
+      "title": "SignalName",
+      "type": "string",
+      "pattern": "^SIG[A-Z0-9+-]+$"
+    },
+    "Pid": {
+      "title": "Pid",
+      "type": "integer",
+      "minimum": 1
+    },
+    "Tid": {
+      "title": "Tid",
+      "type": "integer",
+      "minimum": 1
+    },
+    "Fdnum": {
+      "title": "Fdnum",
+      "type": "integer",
+      "minimum": 0
+    },
+    "TaskRef": {
+      "title": "TaskRef",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pid",
+        "tid"
+      ],
+      "properties": {
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        }
+      }
+    },
+    "Limits": {
+      "title": "Limits",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxProcesses",
+        "maxThreadsPerProcess",
+        "maxSteps",
+        "wallTimeMs",
+        "memoryBytes",
+        "outputBytesPerProcess",
+        "traceBytesCompressed"
+      ],
+      "properties": {
+        "maxProcesses": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxThreadsPerProcess": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxSteps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "wallTimeMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "memoryBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "outputBytesPerProcess": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "traceBytesCompressed": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "Injection": {
+      "title": "Injection",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "signal",
+        "target"
+      ],
+      "properties": {
+        "t": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "signal": {
+          "$ref": "#/$defs/SignalName"
+        },
+        "target": {
+          "const": "foreground"
+        }
+      }
+    },
+    "RunConfig": {
+      "title": "RunConfig",
+      "description": "Todo lo necesario para reproducir la traza idéntica.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "seed",
+        "stdinEof",
+        "schedule",
+        "injections",
+        "limits"
+      ],
+      "properties": {
+        "policy": {
+          "enum": [
+            "round_robin",
+            "random",
+            "manual"
+          ]
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stdinEof": {
+          "type": "boolean",
+          "description": "true: al agotarse el stdin, read devuelve 0 (como `< archivo`)."
+        },
+        "schedule": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TaskRef"
+          },
+          "description": "Prefijo de planificación forzado."
+        },
+        "injections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Injection"
+          }
+        },
+        "limits": {
+          "$ref": "#/$defs/Limits"
+        }
+      }
+    },
+    "Diagnostic": {
+      "title": "Diagnostic",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "line",
+        "col",
+        "severity",
+        "message"
+      ],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "col": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning",
+            "note"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "CompileResult": {
+      "title": "CompileResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "command",
+        "diagnostics"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "command": {
+          "type": "string"
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Diagnostic"
+          }
+        }
+      }
+    },
+    "Outcome": {
+      "title": "Outcome",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/OutcomeExited"
+        },
+        {
+          "$ref": "#/$defs/OutcomeSignaled"
+        },
+        {
+          "$ref": "#/$defs/OutcomeDeadlock"
+        },
+        {
+          "$ref": "#/$defs/OutcomeAwaitingInput"
+        },
+        {
+          "$ref": "#/$defs/OutcomeTruncated"
+        },
+        {
+          "$ref": "#/$defs/OutcomeCompileError"
+        }
+      ]
+    },
+    "OutcomeExited": {
+      "title": "OutcomeExited",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "code"
+      ],
+      "properties": {
+        "kind": {
+          "const": "exited"
+        },
+        "code": {
+          "type": "integer"
+        }
+      }
+    },
+    "OutcomeSignaled": {
+      "title": "OutcomeSignaled",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "signal"
+      ],
+      "properties": {
+        "kind": {
+          "const": "signaled"
+        },
+        "signal": {
+          "$ref": "#/$defs/SignalName"
+        }
+      }
+    },
+    "OutcomeDeadlock": {
+      "title": "OutcomeDeadlock",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "tasks"
+      ],
+      "properties": {
+        "kind": {
+          "const": "deadlock"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TaskRef"
+          }
+        }
+      }
+    },
+    "OutcomeAwaitingInput": {
+      "title": "OutcomeAwaitingInput",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "pid",
+        "tid"
+      ],
+      "properties": {
+        "kind": {
+          "const": "awaitingInput"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        }
+      }
+    },
+    "OutcomeTruncated": {
+      "title": "OutcomeTruncated",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "truncated"
+        }
+      }
+    },
+    "OutcomeCompileError": {
+      "title": "OutcomeCompileError",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "compileError"
+        }
+      }
+    },
+    "Step": {
+      "title": "Step",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "actor",
+        "choices",
+        "clock",
+        "events",
+        "processes",
+        "pipes",
+        "stdin",
+        "signals",
+        "timers",
+        "sync"
+      ],
+      "properties": {
+        "t": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Reloj global; t = 0 es el estado inicial, detenido en la primera línea de main."
+        },
+        "actor": {
+          "description": "Tarea que avanzó; null en t = 0 o en pasos solo del kernel.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TaskRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "executed": {
+          "$ref": "#/$defs/ExecutedLine"
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TaskRef"
+          },
+          "description": "Tareas listas que el planificador podía elegir."
+        },
+        "clock": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Reloj virtual en ms."
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Event"
+          }
+        },
+        "processes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Process"
+          }
+        },
+        "pipes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Pipe"
+          }
+        },
+        "stdin": {
+          "$ref": "#/$defs/StdinState"
+        },
+        "signals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InFlightSignal"
+          }
+        },
+        "timers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Timer"
+          }
+        },
+        "sync": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SyncObject"
+          }
+        }
+      }
+    },
+    "ExecutedLine": {
+      "title": "ExecutedLine",
+      "description": "Línea que acaba de ejecutar el actor (flecha verde de Python Tutor).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "line",
+        "fn"
+      ],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fn": {
+          "type": "string"
+        }
+      }
+    },
+    "StdinState": {
+      "title": "StdinState",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "size",
+        "consumed",
+        "eof"
+      ],
+      "properties": {
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consumed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eof": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Process": {
+      "title": "Process",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pid",
+        "ppid",
+        "pgid",
+        "state",
+        "createdAt",
+        "image",
+        "fds",
+        "signals",
+        "threads",
+        "mem"
+      ],
+      "properties": {
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "ppid": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Pid"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "1 = adoptado por init."
+        },
+        "pgid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "state": {
+          "enum": [
+            "running",
+            "ready",
+            "blocked",
+            "stopped",
+            "zombie",
+            "reaped"
+          ]
+        },
+        "createdAt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "image": {
+          "$ref": "#/$defs/ProcessImage"
+        },
+        "exit": {
+          "$ref": "#/$defs/ExitStatus"
+        },
+        "fds": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[0-9]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Fd"
+          }
+        },
+        "signals": {
+          "$ref": "#/$defs/ProcessSignals"
+        },
+        "threads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Thread"
+          }
+        },
+        "mem": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SnapshotId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ProcessImage": {
+      "title": "ProcessImage",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ImageUser"
+        },
+        {
+          "$ref": "#/$defs/ImageBlackbox"
+        }
+      ]
+    },
+    "ExitStatus": {
+      "title": "ExitStatus",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ExitCode"
+        },
+        {
+          "$ref": "#/$defs/ExitSignal"
+        }
+      ]
+    },
+    "ProcessSignals": {
+      "title": "ProcessSignals",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mask",
+        "pending",
+        "actions"
+      ],
+      "properties": {
+        "mask": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SignalName"
+          }
+        },
+        "pending": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SignalName"
+          }
+        },
+        "actions": {
+          "type": "object",
+          "description": "Solo las disposiciones distintas de la por defecto.",
+          "propertyNames": {
+            "$ref": "#/$defs/SignalName"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/SignalAction"
+          }
+        }
+      }
+    },
+    "SignalAction": {
+      "title": "SignalAction",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SignalActionHandler"
+        },
+        {
+          "$ref": "#/$defs/SignalActionIgnore"
+        }
+      ]
+    },
+    "Fd": {
+      "title": "Fd",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/FdStdin"
+        },
+        {
+          "$ref": "#/$defs/FdTerminal"
+        },
+        {
+          "$ref": "#/$defs/FdPipe"
+        },
+        {
+          "$ref": "#/$defs/FdFile"
+        },
+        {
+          "$ref": "#/$defs/FdOther"
+        }
+      ]
+    },
+    "Thread": {
+      "title": "Thread",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tid",
+        "main",
+        "state",
+        "line",
+        "fn",
+        "holds"
+      ],
+      "properties": {
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "main": {
+          "type": "boolean"
+        },
+        "state": {
+          "enum": [
+            "running",
+            "ready",
+            "blocked",
+            "stopped",
+            "exited"
+          ]
+        },
+        "line": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Próxima línea a ejecutar (flecha roja)."
+        },
+        "fn": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inCall": {
+          "type": "string",
+          "description": "Función de libc en curso."
+        },
+        "blockedOn": {
+          "$ref": "#/$defs/BlockReason"
+        },
+        "start": {
+          "$ref": "#/$defs/ThreadStart"
+        },
+        "holds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ids de mutex tomados."
+        },
+        "inHandler": {
+          "$ref": "#/$defs/SignalName"
+        },
+        "retval": {
+          "$ref": "#/$defs/Value"
+        }
+      }
+    },
+    "ThreadStart": {
+      "title": "ThreadStart",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fn",
+        "arg"
+      ],
+      "properties": {
+        "fn": {
+          "type": "string"
+        },
+        "arg": {
+          "$ref": "#/$defs/Value"
+        }
+      }
+    },
+    "BlockReason": {
+      "title": "BlockReason",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/BlockRead"
+        },
+        {
+          "$ref": "#/$defs/BlockWrite"
+        },
+        {
+          "$ref": "#/$defs/BlockWait"
+        },
+        {
+          "$ref": "#/$defs/BlockJoin"
+        },
+        {
+          "$ref": "#/$defs/BlockMutex"
+        },
+        {
+          "$ref": "#/$defs/BlockCond"
+        },
+        {
+          "$ref": "#/$defs/BlockSem"
+        },
+        {
+          "$ref": "#/$defs/BlockSleep"
+        },
+        {
+          "$ref": "#/$defs/BlockPause"
+        },
+        {
+          "$ref": "#/$defs/BlockSigsuspend"
+        }
+      ]
+    },
+    "Pipe": {
+      "title": "Pipe",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "createdBy",
+        "size",
+        "buffer",
+        "capacity",
+        "readers",
+        "writers",
+        "warnings"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^p[0-9]+$"
+        },
+        "createdBy": {
+          "$ref": "#/$defs/Pid"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "buffer": {
+          "$ref": "#/$defs/Bytes",
+          "description": "Primeros 256 bytes del buffer."
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "readers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PipeEnd"
+          }
+        },
+        "writers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PipeEnd"
+          }
+        },
+        "broken": {
+          "type": "boolean"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PipeWarning"
+          }
+        }
+      }
+    },
+    "PipeEnd": {
+      "title": "PipeEnd",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pid",
+        "fd"
+      ],
+      "properties": {
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "fd": {
+          "$ref": "#/$defs/Fdnum"
+        }
+      }
+    },
+    "PipeWarning": {
+      "title": "PipeWarning",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "pid",
+        "fd",
+        "end"
+      ],
+      "properties": {
+        "kind": {
+          "const": "unclosedEnd"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "fd": {
+          "$ref": "#/$defs/Fdnum"
+        },
+        "end": {
+          "enum": [
+            "r",
+            "w"
+          ]
+        }
+      }
+    },
+    "SignalSource": {
+      "title": "SignalSource",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SourceProcess"
+        },
+        {
+          "$ref": "#/$defs/SourceKernel"
+        },
+        {
+          "$ref": "#/$defs/SourceTimer"
+        },
+        {
+          "$ref": "#/$defs/SourceTerminal"
+        }
+      ]
+    },
+    "InFlightSignal": {
+      "title": "InFlightSignal",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "from",
+        "to",
+        "status"
+      ],
+      "properties": {
+        "signal": {
+          "$ref": "#/$defs/SignalName"
+        },
+        "from": {
+          "$ref": "#/$defs/SignalSource"
+        },
+        "to": {
+          "$ref": "#/$defs/Pid"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "blocked"
+          ]
+        }
+      }
+    },
+    "Timer": {
+      "title": "Timer",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pid",
+        "signal",
+        "fireAt"
+      ],
+      "properties": {
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "signal": {
+          "const": "SIGALRM"
+        },
+        "fireAt": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "SyncObject": {
+      "title": "SyncObject",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SyncMutex"
+        },
+        {
+          "$ref": "#/$defs/SyncCond"
+        },
+        {
+          "$ref": "#/$defs/SyncSem"
+        }
+      ]
+    },
+    "MemorySnapshot": {
+      "title": "MemorySnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "globals",
+        "stacks",
+        "heap"
+      ],
+      "properties": {
+        "globals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Var"
+          }
+        },
+        "stacks": {
+          "type": "object",
+          "description": "Clave = tid; frame [0] = el más reciente.",
+          "propertyNames": {
+            "pattern": "^[0-9]+$"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Frame"
+            }
+          }
+        },
+        "heap": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HeapBlock"
+          }
+        }
+      }
+    },
+    "Frame": {
+      "title": "Frame",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fn",
+        "line",
+        "params",
+        "locals"
+      ],
+      "properties": {
+        "fn": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Var"
+          }
+        },
+        "locals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Var"
+          }
+        },
+        "signal": {
+          "$ref": "#/$defs/SignalName",
+          "description": "Presente si es el frame de un handler."
+        }
+      }
+    },
+    "Var": {
+      "title": "Var",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type",
+        "addr",
+        "size",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "addr": {
+          "$ref": "#/$defs/Addr"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "value": {
+          "$ref": "#/$defs/Value"
+        },
+        "uninit": {
+          "const": true
+        }
+      }
+    },
+    "Field": {
+      "title": "Field",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type",
+        "addr",
+        "size",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "addr": {
+          "$ref": "#/$defs/Addr"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "value": {
+          "$ref": "#/$defs/Value"
+        },
+        "uninit": {
+          "const": true
+        }
+      }
+    },
+    "HeapBlock": {
+      "title": "HeapBlock",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "addr",
+        "size",
+        "allocAt",
+        "allocLine",
+        "value"
+      ],
+      "properties": {
+        "addr": {
+          "$ref": "#/$defs/Addr"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "type": {
+          "type": "string",
+          "description": "Tipo inferido del puntero que lo apunta."
+        },
+        "allocAt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "allocLine": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "freedAt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "value": {
+          "$ref": "#/$defs/Value"
+        }
+      }
+    },
+    "Value": {
+      "title": "Value",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ScalarValue"
+        },
+        {
+          "$ref": "#/$defs/PointerValue"
+        },
+        {
+          "$ref": "#/$defs/StructValue"
+        },
+        {
+          "$ref": "#/$defs/ArrayValue"
+        },
+        {
+          "$ref": "#/$defs/OpaqueValue"
+        }
+      ]
+    },
+    "ScalarValue": {
+      "title": "ScalarValue",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "const": "scalar"
+        },
+        "value": {
+          "description": "Enteros de 64 bits que no caben exactos en un double, NaN e Inf van como string.",
+          "type": [
+            "number",
+            "string",
+            "boolean"
+          ]
+        },
+        "repr": {
+          "type": "string",
+          "description": "Representación para mostrar: 'a', RED, 3.14."
+        }
+      }
+    },
+    "PointerValue": {
+      "title": "PointerValue",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "target"
+      ],
+      "properties": {
+        "kind": {
+          "const": "pointer"
+        },
+        "target": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "null = NULL."
+        },
+        "fn": {
+          "type": "string",
+          "description": "Puntero a función: nombre del destino."
+        }
+      }
+    },
+    "StructValue": {
+      "title": "StructValue",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "fields"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "struct",
+            "union"
+          ]
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Field"
+          }
+        }
+      }
+    },
+    "ArrayValue": {
+      "title": "ArrayValue",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "length",
+        "items"
+      ],
+      "properties": {
+        "kind": {
+          "const": "array"
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cantidad total de elementos; items puede traer menos."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Value"
+          }
+        },
+        "text": {
+          "$ref": "#/$defs/Bytes",
+          "description": "char[]: contenido hasta el primer \\0."
+        }
+      }
+    },
+    "OpaqueValue": {
+      "title": "OpaqueValue",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "note"
+      ],
+      "properties": {
+        "kind": {
+          "const": "opaque"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "OutputChunk": {
+      "title": "OutputChunk",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "pid",
+        "fd",
+        "stream",
+        "bytes"
+      ],
+      "properties": {
+        "t": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "fd": {
+          "$ref": "#/$defs/Fdnum"
+        },
+        "stream": {
+          "enum": [
+            "stdout",
+            "stderr"
+          ]
+        },
+        "bytes": {
+          "$ref": "#/$defs/Bytes"
+        }
+      }
+    },
+    "Summary": {
+      "title": "Summary",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "leaks",
+        "memErrors"
+      ],
+      "properties": {
+        "leaks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Leak"
+          }
+        },
+        "memErrors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemErrorRef"
+          }
+        }
+      }
+    },
+    "Leak": {
+      "title": "Leak",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pid",
+        "addr",
+        "size",
+        "allocAt",
+        "allocLine"
+      ],
+      "properties": {
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "addr": {
+          "$ref": "#/$defs/Addr"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "type": {
+          "type": "string"
+        },
+        "allocAt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "allocLine": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "MemErrorRef": {
+      "title": "MemErrorRef",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "pid",
+        "tid",
+        "kind",
+        "addr"
+      ],
+      "properties": {
+        "t": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "kind": {
+          "enum": [
+            "useAfterFree",
+            "doubleFree",
+            "invalidFree",
+            "segfault"
+          ]
+        },
+        "addr": {
+          "$ref": "#/$defs/Addr"
+        }
+      }
+    },
+    "Event": {
+      "title": "Event",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/EventCall"
+        },
+        {
+          "$ref": "#/$defs/EventReturn"
+        },
+        {
+          "$ref": "#/$defs/EventFork"
+        },
+        {
+          "$ref": "#/$defs/EventThreadCreate"
+        },
+        {
+          "$ref": "#/$defs/EventExec"
+        },
+        {
+          "$ref": "#/$defs/EventExit"
+        },
+        {
+          "$ref": "#/$defs/EventWait"
+        },
+        {
+          "$ref": "#/$defs/EventJoin"
+        },
+        {
+          "$ref": "#/$defs/EventReparent"
+        },
+        {
+          "$ref": "#/$defs/EventPipe"
+        },
+        {
+          "$ref": "#/$defs/EventDup"
+        },
+        {
+          "$ref": "#/$defs/EventClose"
+        },
+        {
+          "$ref": "#/$defs/EventRead"
+        },
+        {
+          "$ref": "#/$defs/EventWrite"
+        },
+        {
+          "$ref": "#/$defs/EventBlock"
+        },
+        {
+          "$ref": "#/$defs/EventUnblock"
+        },
+        {
+          "$ref": "#/$defs/EventSignalSend"
+        },
+        {
+          "$ref": "#/$defs/EventSignalDeliver"
+        },
+        {
+          "$ref": "#/$defs/EventSignalReturn"
+        },
+        {
+          "$ref": "#/$defs/EventMutex"
+        },
+        {
+          "$ref": "#/$defs/EventCond"
+        },
+        {
+          "$ref": "#/$defs/EventSem"
+        },
+        {
+          "$ref": "#/$defs/EventMalloc"
+        },
+        {
+          "$ref": "#/$defs/EventFree"
+        },
+        {
+          "$ref": "#/$defs/EventMemError"
+        },
+        {
+          "$ref": "#/$defs/EventStdinNeeded"
+        },
+        {
+          "$ref": "#/$defs/EventDeadlock"
+        },
+        {
+          "$ref": "#/$defs/EventTruncated"
+        }
+      ]
+    },
+    "EventCall": {
+      "title": "EventCall",
+      "description": "Llamada atómica a libc (printf, strlen…).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "fn"
+      ],
+      "properties": {
+        "type": {
+          "const": "call"
+        },
+        "fn": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      }
+    },
+    "EventReturn": {
+      "title": "EventReturn",
+      "description": "Retorno de una función del usuario.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "fn"
+      ],
+      "properties": {
+        "type": {
+          "const": "return"
+        },
+        "fn": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/Value"
+        }
+      }
+    },
+    "EventFork": {
+      "title": "EventFork",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "parent",
+        "child"
+      ],
+      "properties": {
+        "type": {
+          "const": "fork"
+        },
+        "parent": {
+          "$ref": "#/$defs/Pid"
+        },
+        "child": {
+          "$ref": "#/$defs/Pid"
+        },
+        "vfork": {
+          "const": true
+        }
+      }
+    },
+    "EventThreadCreate": {
+      "title": "EventThreadCreate",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "creator",
+        "tid",
+        "fn",
+        "arg"
+      ],
+      "properties": {
+        "type": {
+          "const": "threadCreate"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "creator": {
+          "$ref": "#/$defs/Tid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "fn": {
+          "type": "string"
+        },
+        "arg": {
+          "$ref": "#/$defs/Value"
+        }
+      }
+    },
+    "EventExec": {
+      "title": "EventExec",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "path",
+        "argv",
+        "blackbox"
+      ],
+      "properties": {
+        "type": {
+          "const": "exec"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "path": {
+          "type": "string"
+        },
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blackbox": {
+          "type": "boolean"
+        }
+      }
+    },
+    "EventExit": {
+      "title": "EventExit",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "scope"
+      ],
+      "properties": {
+        "type": {
+          "const": "exit"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "scope": {
+          "enum": [
+            "process",
+            "thread"
+          ]
+        },
+        "code": {
+          "type": "integer"
+        },
+        "signal": {
+          "$ref": "#/$defs/SignalName"
+        },
+        "retval": {
+          "$ref": "#/$defs/Value"
+        }
+      }
+    },
+    "EventWait": {
+      "title": "EventWait",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "target"
+      ],
+      "properties": {
+        "type": {
+          "const": "wait"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "target": {
+          "type": "integer"
+        },
+        "reaped": {
+          "$ref": "#/$defs/Pid"
+        },
+        "status": {
+          "$ref": "#/$defs/ExitStatus"
+        }
+      }
+    },
+    "EventJoin": {
+      "title": "EventJoin",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "tid",
+        "target"
+      ],
+      "properties": {
+        "type": {
+          "const": "join"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "target": {
+          "$ref": "#/$defs/Tid"
+        },
+        "retval": {
+          "$ref": "#/$defs/Value"
+        }
+      }
+    },
+    "EventReparent": {
+      "title": "EventReparent",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "from",
+        "to"
+      ],
+      "properties": {
+        "type": {
+          "const": "reparent"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "from": {
+          "$ref": "#/$defs/Pid"
+        },
+        "to": {
+          "const": 1
+        }
+      }
+    },
+    "EventPipe": {
+      "title": "EventPipe",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "pipe",
+        "fds"
+      ],
+      "properties": {
+        "type": {
+          "const": "pipe"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "pipe": {
+          "type": "string"
+        },
+        "fds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Fdnum"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "EventDup": {
+      "title": "EventDup",
+      "description": "dup y dup2.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "oldfd",
+        "newfd"
+      ],
+      "properties": {
+        "type": {
+          "const": "dup"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "oldfd": {
+          "$ref": "#/$defs/Fdnum"
+        },
+        "newfd": {
+          "$ref": "#/$defs/Fdnum"
+        },
+        "replaced": {
+          "$ref": "#/$defs/Fd"
+        }
+      }
+    },
+    "EventClose": {
+      "title": "EventClose",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "fd",
+        "was"
+      ],
+      "properties": {
+        "type": {
+          "const": "close"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "fd": {
+          "$ref": "#/$defs/Fdnum"
+        },
+        "was": {
+          "$ref": "#/$defs/Fd"
+        }
+      }
+    },
+    "EventRead": {
+      "title": "EventRead",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "tid",
+        "fd",
+        "bytes",
+        "n",
+        "eof"
+      ],
+      "properties": {
+        "type": {
+          "const": "read"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "fd": {
+          "$ref": "#/$defs/Fdnum"
+        },
+        "pipe": {
+          "type": "string"
+        },
+        "stdin": {
+          "const": true
+        },
+        "bytes": {
+          "$ref": "#/$defs/Bytes",
+          "description": "Truncado a 256 bytes."
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eof": {
+          "type": "boolean"
+        },
+        "into": {
+          "$ref": "#/$defs/Addr",
+          "description": "Dirección del buffer destino."
+        }
+      }
+    },
+    "EventWrite": {
+      "title": "EventWrite",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "tid",
+        "fd",
+        "bytes",
+        "n"
+      ],
+      "properties": {
+        "type": {
+          "const": "write"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "fd": {
+          "$ref": "#/$defs/Fdnum"
+        },
+        "pipe": {
+          "type": "string"
+        },
+        "terminal": {
+          "const": true
+        },
+        "bytes": {
+          "$ref": "#/$defs/Bytes",
+          "description": "Truncado a 256 bytes."
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "epipe": {
+          "const": true
+        }
+      }
+    },
+    "EventBlock": {
+      "title": "EventBlock",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "tid",
+        "reason"
+      ],
+      "properties": {
+        "type": {
+          "const": "block"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "reason": {
+          "$ref": "#/$defs/BlockReason"
+        }
+      }
+    },
+    "EventUnblock": {
+      "title": "EventUnblock",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "tid"
+      ],
+      "properties": {
+        "type": {
+          "const": "unblock"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        }
+      }
+    },
+    "EventSignalSend": {
+      "title": "EventSignalSend",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "from",
+        "to",
+        "signal"
+      ],
+      "properties": {
+        "type": {
+          "const": "signalSend"
+        },
+        "from": {
+          "$ref": "#/$defs/SignalSource"
+        },
+        "to": {
+          "type": "integer",
+          "description": "Pid destino; negativo = grupo de procesos."
+        },
+        "signal": {
+          "$ref": "#/$defs/SignalName"
+        }
+      }
+    },
+    "EventSignalDeliver": {
+      "title": "EventSignalDeliver",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "tid",
+        "signal",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "const": "signalDeliver"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "signal": {
+          "$ref": "#/$defs/SignalName"
+        },
+        "action": {
+          "enum": [
+            "handler",
+            "ignore",
+            "terminate",
+            "core",
+            "stop",
+            "continue"
+          ]
+        },
+        "handler": {
+          "type": "string"
+        }
+      }
+    },
+    "EventSignalReturn": {
+      "title": "EventSignalReturn",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "tid",
+        "signal"
+      ],
+      "properties": {
+        "type": {
+          "const": "signalReturn"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "signal": {
+          "$ref": "#/$defs/SignalName"
+        }
+      }
+    },
+    "EventMutex": {
+      "title": "EventMutex",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "op",
+        "id",
+        "tid",
+        "result"
+      ],
+      "properties": {
+        "type": {
+          "const": "mutex"
+        },
+        "op": {
+          "enum": [
+            "lock",
+            "trylock",
+            "unlock"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "result": {
+          "enum": [
+            "acquired",
+            "blocked",
+            "busy",
+            "released"
+          ]
+        }
+      }
+    },
+    "EventCond": {
+      "title": "EventCond",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "op",
+        "id",
+        "tid"
+      ],
+      "properties": {
+        "type": {
+          "const": "cond"
+        },
+        "op": {
+          "enum": [
+            "wait",
+            "signal",
+            "broadcast",
+            "wake"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "woke": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Tid"
+          }
+        }
+      }
+    },
+    "EventSem": {
+      "title": "EventSem",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "op",
+        "id",
+        "tid",
+        "value",
+        "result"
+      ],
+      "properties": {
+        "type": {
+          "const": "sem"
+        },
+        "op": {
+          "enum": [
+            "wait",
+            "trywait",
+            "post"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "value": {
+          "type": "integer"
+        },
+        "result": {
+          "enum": [
+            "acquired",
+            "blocked",
+            "busy",
+            "posted"
+          ]
+        }
+      }
+    },
+    "EventMalloc": {
+      "title": "EventMalloc",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "fn",
+        "addr",
+        "size"
+      ],
+      "properties": {
+        "type": {
+          "const": "malloc"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "fn": {
+          "type": "string"
+        },
+        "addr": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "oldAddr": {
+          "$ref": "#/$defs/Addr"
+        }
+      }
+    },
+    "EventFree": {
+      "title": "EventFree",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "addr"
+      ],
+      "properties": {
+        "type": {
+          "const": "free"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "addr": {
+          "$ref": "#/$defs/Addr"
+        },
+        "error": {
+          "enum": [
+            "doubleFree",
+            "invalidPointer"
+          ]
+        }
+      }
+    },
+    "EventMemError": {
+      "title": "EventMemError",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "tid",
+        "kind",
+        "addr"
+      ],
+      "properties": {
+        "type": {
+          "const": "memError"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        },
+        "kind": {
+          "enum": [
+            "useAfterFree",
+            "segfault"
+          ]
+        },
+        "addr": {
+          "$ref": "#/$defs/Addr"
+        }
+      }
+    },
+    "EventStdinNeeded": {
+      "title": "EventStdinNeeded",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "pid",
+        "tid"
+      ],
+      "properties": {
+        "type": {
+          "const": "stdinNeeded"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        }
+      }
+    },
+    "EventDeadlock": {
+      "title": "EventDeadlock",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "tasks"
+      ],
+      "properties": {
+        "type": {
+          "const": "deadlock"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TaskRef"
+          }
+        }
+      }
+    },
+    "EventTruncated": {
+      "title": "EventTruncated",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "reason"
+      ],
+      "properties": {
+        "type": {
+          "const": "truncated"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "ImageUser": {
+      "title": "ImageUser",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path"
+      ],
+      "properties": {
+        "kind": {
+          "const": "user"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "ImageBlackbox": {
+      "title": "ImageBlackbox",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "argv"
+      ],
+      "properties": {
+        "kind": {
+          "const": "blackbox"
+        },
+        "path": {
+          "type": "string"
+        },
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Binario sin símbolos cargado con exec: se muestra como caja negra."
+    },
+    "ExitCode": {
+      "title": "ExitCode",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "integer"
+        }
+      }
+    },
+    "ExitSignal": {
+      "title": "ExitSignal",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "core"
+      ],
+      "properties": {
+        "signal": {
+          "$ref": "#/$defs/SignalName"
+        },
+        "core": {
+          "type": "boolean"
+        }
+      }
+    },
+    "SignalActionHandler": {
+      "title": "SignalActionHandler",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "fn"
+      ],
+      "properties": {
+        "action": {
+          "const": "handler"
+        },
+        "fn": {
+          "type": "string"
+        }
+      }
+    },
+    "SignalActionIgnore": {
+      "title": "SignalActionIgnore",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action"
+      ],
+      "properties": {
+        "action": {
+          "const": "ignore"
+        }
+      }
+    },
+    "FdStdin": {
+      "title": "FdStdin",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "stdin"
+        },
+        "cloexec": {
+          "type": "boolean"
+        }
+      },
+      "description": "Entrada estándar precargada."
+    },
+    "FdTerminal": {
+      "title": "FdTerminal",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "terminal"
+        },
+        "cloexec": {
+          "type": "boolean"
+        }
+      },
+      "description": "Consola (fd 1 y 2 por defecto)."
+    },
+    "FdPipe": {
+      "title": "FdPipe",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "pipe",
+        "end"
+      ],
+      "properties": {
+        "kind": {
+          "const": "pipe"
+        },
+        "pipe": {
+          "type": "string"
+        },
+        "end": {
+          "enum": [
+            "r",
+            "w"
+          ]
+        },
+        "cloexec": {
+          "type": "boolean"
+        }
+      }
+    },
+    "FdFile": {
+      "title": "FdFile",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "mode"
+      ],
+      "properties": {
+        "kind": {
+          "const": "file"
+        },
+        "path": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "r",
+            "w",
+            "rw",
+            "a"
+          ]
+        },
+        "cloexec": {
+          "type": "boolean"
+        }
+      }
+    },
+    "FdOther": {
+      "title": "FdOther",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "label"
+      ],
+      "properties": {
+        "kind": {
+          "const": "other"
+        },
+        "label": {
+          "type": "string"
+        },
+        "cloexec": {
+          "type": "boolean"
+        }
+      }
+    },
+    "BlockRead": {
+      "title": "BlockRead",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "fd"
+      ],
+      "properties": {
+        "kind": {
+          "const": "read"
+        },
+        "fd": {
+          "$ref": "#/$defs/Fdnum"
+        },
+        "pipe": {
+          "type": "string"
+        },
+        "stdin": {
+          "const": true
+        }
+      }
+    },
+    "BlockWrite": {
+      "title": "BlockWrite",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "fd",
+        "pipe"
+      ],
+      "properties": {
+        "kind": {
+          "const": "write"
+        },
+        "fd": {
+          "$ref": "#/$defs/Fdnum"
+        },
+        "pipe": {
+          "type": "string"
+        }
+      }
+    },
+    "BlockWait": {
+      "title": "BlockWait",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "target"
+      ],
+      "properties": {
+        "kind": {
+          "const": "wait"
+        },
+        "target": {
+          "type": "integer",
+          "description": "Pid esperado; -1 = cualquier hijo."
+        }
+      }
+    },
+    "BlockJoin": {
+      "title": "BlockJoin",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "tid"
+      ],
+      "properties": {
+        "kind": {
+          "const": "join"
+        },
+        "tid": {
+          "$ref": "#/$defs/Tid"
+        }
+      }
+    },
+    "BlockMutex": {
+      "title": "BlockMutex",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "owner"
+      ],
+      "properties": {
+        "kind": {
+          "const": "mutex"
+        },
+        "id": {
+          "type": "string"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Tid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "BlockCond": {
+      "title": "BlockCond",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "mutex"
+      ],
+      "properties": {
+        "kind": {
+          "const": "cond"
+        },
+        "id": {
+          "type": "string"
+        },
+        "mutex": {
+          "type": "string"
+        }
+      }
+    },
+    "BlockSem": {
+      "title": "BlockSem",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "const": "sem"
+        },
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "BlockSleep": {
+      "title": "BlockSleep",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "until"
+      ],
+      "properties": {
+        "kind": {
+          "const": "sleep"
+        },
+        "until": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "ms del reloj virtual."
+        }
+      }
+    },
+    "BlockPause": {
+      "title": "BlockPause",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "pause"
+        }
+      }
+    },
+    "BlockSigsuspend": {
+      "title": "BlockSigsuspend",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "sigsuspend"
+        }
+      }
+    },
+    "SourceProcess": {
+      "title": "SourceProcess",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "pid",
+        "via"
+      ],
+      "properties": {
+        "kind": {
+          "const": "process"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "via": {
+          "enum": [
+            "kill",
+            "raise"
+          ]
+        }
+      }
+    },
+    "SourceKernel": {
+      "title": "SourceKernel",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "cause"
+      ],
+      "properties": {
+        "kind": {
+          "const": "kernel"
+        },
+        "cause": {
+          "enum": [
+            "SIGCHLD",
+            "SIGPIPE",
+            "fault"
+          ]
+        }
+      }
+    },
+    "SourceTimer": {
+      "title": "SourceTimer",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "pid"
+      ],
+      "properties": {
+        "kind": {
+          "const": "timer"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        }
+      }
+    },
+    "SourceTerminal": {
+      "title": "SourceTerminal",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "terminal"
+        }
+      }
+    },
+    "SyncMutex": {
+      "title": "SyncMutex",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "pid",
+        "addr",
+        "waiters",
+        "owner"
+      ],
+      "properties": {
+        "kind": {
+          "const": "mutex"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "addr": {
+          "$ref": "#/$defs/Addr"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nombre de la variable según DWARF."
+        },
+        "waiters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Tid"
+          }
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Tid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "SyncCond": {
+      "title": "SyncCond",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "pid",
+        "addr",
+        "waiters"
+      ],
+      "properties": {
+        "kind": {
+          "const": "cond"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "addr": {
+          "$ref": "#/$defs/Addr"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nombre de la variable según DWARF."
+        },
+        "waiters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Tid"
+          }
+        }
+      }
+    },
+    "SyncSem": {
+      "title": "SyncSem",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "pid",
+        "addr",
+        "waiters",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "const": "sem"
+        },
+        "id": {
+          "type": "string"
+        },
+        "pid": {
+          "$ref": "#/$defs/Pid"
+        },
+        "addr": {
+          "$ref": "#/$defs/Addr"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nombre de la variable según DWARF."
+        },
+        "waiters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Tid"
+          }
+        },
+        "value": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

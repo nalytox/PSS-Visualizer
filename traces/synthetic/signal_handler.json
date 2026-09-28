@@ -1,0 +1,4715 @@
+{
+ "version": 1,
+ "arch": "x86_64",
+ "source": "#include <signal.h>\n#include <stdio.h>\n#include <sys/wait.h>\n#include <unistd.h>\n\nvolatile sig_atomic_t got = 0;\n\nvoid on_usr1(int sig) {\n    got = 1;\n    printf(\"hijo: recibí la señal %d\\n\", sig);\n}\n\nint main(void) {\n    struct sigaction sa = {0};\n    sa.sa_handler = on_usr1;\n    sigaction(SIGUSR1, &sa, NULL);\n    pid_t pid = fork();\n    if (pid == 0) {\n        while (!got)\n            pause();\n        printf(\"hijo: termino\\n\");\n        return 0;\n    }\n    sleep(1);\n    kill(pid, SIGUSR1);\n    wait(NULL);\n    printf(\"padre: listo\\n\");\n    return 0;\n}\n",
+ "stdin": "",
+ "run": {
+  "policy": "manual",
+  "seed": 0,
+  "stdinEof": true,
+  "schedule": [
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1001,
+    "tid": 1001
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   },
+   {
+    "pid": 1000,
+    "tid": 1000
+   }
+  ],
+  "injections": [],
+  "limits": {
+   "maxProcesses": 32,
+   "maxThreadsPerProcess": 16,
+   "maxSteps": 5000,
+   "wallTimeMs": 10000,
+   "memoryBytes": 268435456,
+   "outputBytesPerProcess": 65536,
+   "traceBytesCompressed": 20971520
+  }
+ },
+ "compile": {
+  "ok": true,
+  "command": "gcc -g -O0 -fno-omit-frame-pointer -pthread -no-pie -o prog prog.c",
+  "diagnostics": []
+ },
+ "outcome": {
+  "kind": "exited",
+  "code": 0
+ },
+ "truncated": false,
+ "steps": [
+  {
+   "t": 0,
+   "actor": null,
+   "choices": [],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 14,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m0"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": []
+  },
+  {
+   "t": 1,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 15,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m1"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 14,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 2,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {}
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 16,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m2"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 15,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 3,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "call",
+     "fn": "sigaction",
+     "summary": "SIGUSR1 → on_usr1"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 17,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m3"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 16,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 4,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "fork",
+     "parent": 1000,
+     "child": 1001
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 18,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m4"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 18,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m5"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 17,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 5,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 18,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m4"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 19,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m6"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 18,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 6,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 24,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m7"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 19,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m6"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 18,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 7,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 24,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m7"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 20,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 19,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 8,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "block",
+     "pid": 1000,
+     "tid": 1000,
+     "reason": {
+      "kind": "sleep",
+      "until": 1000
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 24,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "sleep",
+        "until": 1000
+       },
+       "inCall": "sleep"
+      }
+     ],
+     "mem": "m7"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 20,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 24,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 9,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 0,
+   "events": [
+    {
+     "type": "block",
+     "pid": 1001,
+     "tid": 1001,
+     "reason": {
+      "kind": "pause"
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 24,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "sleep",
+        "until": 1000
+       },
+       "inCall": "sleep"
+      }
+     ],
+     "mem": "m7"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "blocked",
+       "line": 20,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "pause"
+       },
+       "inCall": "pause"
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 20,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 10,
+   "actor": null,
+   "choices": [],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "unblock",
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 24,
+       "fn": "main",
+       "holds": [],
+       "inCall": "sleep"
+      }
+     ],
+     "mem": "m7"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "blocked",
+       "line": 20,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "pause"
+       },
+       "inCall": "pause"
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": []
+  },
+  {
+   "t": 11,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 1000,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 25,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m9"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "blocked",
+       "line": 20,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "pause"
+       },
+       "inCall": "pause"
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 24,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 12,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "signalSend",
+     "from": {
+      "kind": "process",
+      "pid": 1000,
+      "via": "kill"
+     },
+     "to": 1001,
+     "signal": "SIGUSR1"
+    },
+    {
+     "type": "unblock",
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 26,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m10"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [
+       "SIGUSR1"
+      ],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 20,
+       "fn": "main",
+       "holds": [],
+       "inCall": "pause"
+      }
+     ],
+     "mem": "m8"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [
+    {
+     "signal": "SIGUSR1",
+     "from": {
+      "kind": "process",
+      "pid": 1000,
+      "via": "kill"
+     },
+     "to": 1001,
+     "status": "pending"
+    }
+   ],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 25,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 13,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "signalDeliver",
+     "pid": 1001,
+     "tid": 1001,
+     "signal": "SIGUSR1",
+     "action": "handler",
+     "handler": "on_usr1"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 26,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m10"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 9,
+       "fn": "on_usr1",
+       "holds": [],
+       "inHandler": "SIGUSR1"
+      }
+     ],
+     "mem": "m11"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": []
+  },
+  {
+   "t": 14,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    },
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "block",
+     "pid": 1000,
+     "tid": 1000,
+     "reason": {
+      "kind": "wait",
+      "target": -1
+     }
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 26,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "wait",
+        "target": -1
+       },
+       "inCall": "wait"
+      }
+     ],
+     "mem": "m10"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "ready",
+       "line": 9,
+       "fn": "on_usr1",
+       "holds": [],
+       "inHandler": "SIGUSR1"
+      }
+     ],
+     "mem": "m11"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 26,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 15,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 1000,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 26,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "wait",
+        "target": -1
+       },
+       "inCall": "wait"
+      }
+     ],
+     "mem": "m10"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 10,
+       "fn": "on_usr1",
+       "holds": [],
+       "inHandler": "SIGUSR1"
+      }
+     ],
+     "mem": "m12"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 9,
+    "fn": "on_usr1"
+   }
+  },
+  {
+   "t": 16,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "call",
+     "fn": "printf"
+    },
+    {
+     "type": "write",
+     "pid": 1001,
+     "tid": 1001,
+     "fd": 1,
+     "terminal": true,
+     "bytes": "hijo: recibÃ­ la seÃ±al 10\n",
+     "n": 27
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 26,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "wait",
+        "target": -1
+       },
+       "inCall": "wait"
+      }
+     ],
+     "mem": "m10"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 11,
+       "fn": "on_usr1",
+       "holds": [],
+       "inHandler": "SIGUSR1"
+      }
+     ],
+     "mem": "m13"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 10,
+    "fn": "on_usr1"
+   }
+  },
+  {
+   "t": 17,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "signalReturn",
+     "pid": 1001,
+     "tid": 1001,
+     "signal": "SIGUSR1"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 26,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "wait",
+        "target": -1
+       },
+       "inCall": "wait"
+      }
+     ],
+     "mem": "m10"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 19,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m14"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 11,
+    "fn": "on_usr1"
+   }
+  },
+  {
+   "t": 18,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 1000,
+   "events": [],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 26,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "wait",
+        "target": -1
+       },
+       "inCall": "wait"
+      }
+     ],
+     "mem": "m10"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 21,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m15"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 19,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 19,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "call",
+     "fn": "printf"
+    },
+    {
+     "type": "write",
+     "pid": 1001,
+     "tid": 1001,
+     "fd": 1,
+     "terminal": true,
+     "bytes": "hijo: termino\n",
+     "n": 14
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "blocked",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "blocked",
+       "line": 26,
+       "fn": "main",
+       "holds": [],
+       "blockedOn": {
+        "kind": "wait",
+        "target": -1
+       },
+       "inCall": "wait"
+      }
+     ],
+     "mem": "m10"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "running",
+       "line": 22,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m16"
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 21,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 20,
+   "actor": {
+    "pid": 1001,
+    "tid": 1001
+   },
+   "choices": [
+    {
+     "pid": 1001,
+     "tid": 1001
+    }
+   ],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "return",
+     "fn": "main",
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "type": "exit",
+     "pid": 1001,
+     "scope": "process",
+     "code": 0
+    },
+    {
+     "type": "signalSend",
+     "from": {
+      "kind": "kernel",
+      "cause": "SIGCHLD"
+     },
+     "to": 1000,
+     "signal": "SIGCHLD"
+    },
+    {
+     "type": "unblock",
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "ready",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [
+       "SIGCHLD"
+      ],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "ready",
+       "line": 26,
+       "fn": "main",
+       "holds": [],
+       "inCall": "wait"
+      }
+     ],
+     "mem": "m10"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "zombie",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": "m17",
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [
+    {
+     "signal": "SIGCHLD",
+     "from": {
+      "kind": "kernel",
+      "cause": "SIGCHLD"
+     },
+     "to": 1000,
+     "status": "pending"
+    }
+   ],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 22,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 21,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "wait",
+     "pid": 1000,
+     "target": -1,
+     "reaped": 1001,
+     "status": {
+      "code": 0
+     }
+    },
+    {
+     "type": "signalDeliver",
+     "pid": 1000,
+     "tid": 1000,
+     "signal": "SIGCHLD",
+     "action": "ignore"
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 27,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m18"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "reaped",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": null,
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 26,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 22,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "call",
+     "fn": "printf"
+    },
+    {
+     "type": "write",
+     "pid": 1000,
+     "tid": 1000,
+     "fd": 1,
+     "terminal": true,
+     "bytes": "padre: listo\n",
+     "n": 13
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "running",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {
+      "0": {
+       "kind": "stdin"
+      },
+      "1": {
+       "kind": "terminal"
+      },
+      "2": {
+       "kind": "terminal"
+      }
+     },
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "running",
+       "line": 28,
+       "fn": "main",
+       "holds": []
+      }
+     ],
+     "mem": "m19"
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "reaped",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": null,
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 27,
+    "fn": "main"
+   }
+  },
+  {
+   "t": 23,
+   "actor": {
+    "pid": 1000,
+    "tid": 1000
+   },
+   "choices": [
+    {
+     "pid": 1000,
+     "tid": 1000
+    }
+   ],
+   "clock": 1000,
+   "events": [
+    {
+     "type": "return",
+     "fn": "main",
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    },
+    {
+     "type": "exit",
+     "pid": 1000,
+     "scope": "process",
+     "code": 0
+    }
+   ],
+   "processes": [
+    {
+     "pid": 1000,
+     "ppid": null,
+     "pgid": 1000,
+     "state": "zombie",
+     "createdAt": 0,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1000,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": "m20",
+     "exit": {
+      "code": 0
+     }
+    },
+    {
+     "pid": 1001,
+     "ppid": 1000,
+     "pgid": 1000,
+     "state": "reaped",
+     "createdAt": 4,
+     "image": {
+      "kind": "user",
+      "path": "prog"
+     },
+     "fds": {},
+     "signals": {
+      "mask": [],
+      "pending": [],
+      "actions": {
+       "SIGUSR1": {
+        "action": "handler",
+        "fn": "on_usr1"
+       }
+      }
+     },
+     "threads": [
+      {
+       "tid": 1001,
+       "main": true,
+       "state": "exited",
+       "line": null,
+       "fn": null,
+       "holds": []
+      }
+     ],
+     "mem": null,
+     "exit": {
+      "code": 0
+     }
+    }
+   ],
+   "pipes": [],
+   "stdin": {
+    "size": 0,
+    "consumed": 0,
+    "eof": true
+   },
+   "signals": [],
+   "timers": [],
+   "sync": [],
+   "executed": {
+    "line": 28,
+    "fn": "main"
+   }
+  }
+ ],
+ "snapshots": {
+  "m0": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 14,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           },
+           "uninit": true
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           },
+           "uninit": true
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           },
+           "uninit": true
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           },
+           "uninit": true
+          }
+         ]
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m1": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 15,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m2": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 16,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m3": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 17,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        },
+        "uninit": true
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m4": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 18,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m5": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 18,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m6": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 19,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m7": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 24,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m8": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 20,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m9": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 25,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m10": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 26,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m11": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "on_usr1",
+      "line": 9,
+      "params": [
+       {
+        "name": "sig",
+        "type": "int",
+        "addr": "0x7fffffffc2cc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 10,
+         "repr": "SIGUSR1"
+        }
+       }
+      ],
+      "locals": [],
+      "signal": "SIGUSR1"
+     },
+     {
+      "fn": "main",
+      "line": 20,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m12": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 1
+     }
+    }
+   ],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "on_usr1",
+      "line": 10,
+      "params": [
+       {
+        "name": "sig",
+        "type": "int",
+        "addr": "0x7fffffffc2cc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 10,
+         "repr": "SIGUSR1"
+        }
+       }
+      ],
+      "locals": [],
+      "signal": "SIGUSR1"
+     },
+     {
+      "fn": "main",
+      "line": 20,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m13": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 1
+     }
+    }
+   ],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "on_usr1",
+      "line": 11,
+      "params": [
+       {
+        "name": "sig",
+        "type": "int",
+        "addr": "0x7fffffffc2cc",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 10,
+         "repr": "SIGUSR1"
+        }
+       }
+      ],
+      "locals": [],
+      "signal": "SIGUSR1"
+     },
+     {
+      "fn": "main",
+      "line": 20,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m14": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 1
+     }
+    }
+   ],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 19,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m15": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 1
+     }
+    }
+   ],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 21,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m16": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 1
+     }
+    }
+   ],
+   "stacks": {
+    "1001": [
+     {
+      "fn": "main",
+      "line": 22,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 0
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m17": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 1
+     }
+    }
+   ],
+   "stacks": {
+    "1001": []
+   },
+   "heap": []
+  },
+  "m18": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 27,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m19": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": [
+     {
+      "fn": "main",
+      "line": 28,
+      "params": [],
+      "locals": [
+       {
+        "name": "sa",
+        "type": "struct sigaction",
+        "addr": "0x7fffffffc890",
+        "size": 152,
+        "value": {
+         "kind": "struct",
+         "fields": [
+          {
+           "name": "sa_handler",
+           "type": "void (*)(int)",
+           "addr": "0x7fffffffc890",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": "0x401236",
+            "fn": "on_usr1"
+           }
+          },
+          {
+           "name": "sa_mask",
+           "type": "sigset_t",
+           "addr": "0x7fffffffc898",
+           "size": 128,
+           "value": {
+            "kind": "opaque",
+            "note": "{}"
+           }
+          },
+          {
+           "name": "sa_flags",
+           "type": "int",
+           "addr": "0x7fffffffc918",
+           "size": 4,
+           "value": {
+            "kind": "scalar",
+            "value": 0
+           }
+          },
+          {
+           "name": "sa_restorer",
+           "type": "void (*)(void)",
+           "addr": "0x7fffffffc920",
+           "size": 8,
+           "value": {
+            "kind": "pointer",
+            "target": null
+           }
+          }
+         ]
+        }
+       },
+       {
+        "name": "pid",
+        "type": "pid_t",
+        "addr": "0x7fffffffc88c",
+        "size": 4,
+        "value": {
+         "kind": "scalar",
+         "value": 1001
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "heap": []
+  },
+  "m20": {
+   "globals": [
+    {
+     "name": "got",
+     "type": "volatile sig_atomic_t",
+     "addr": "0x40405c",
+     "size": 4,
+     "value": {
+      "kind": "scalar",
+      "value": 0
+     }
+    }
+   ],
+   "stacks": {
+    "1000": []
+   },
+   "heap": []
+  }
+ },
+ "output": [
+  {
+   "t": 16,
+   "pid": 1001,
+   "fd": 1,
+   "stream": "stdout",
+   "bytes": "hijo: recibÃ­ la seÃ±al 10\n"
+  },
+  {
+   "t": 19,
+   "pid": 1001,
+   "fd": 1,
+   "stream": "stdout",
+   "bytes": "hijo: termino\n"
+  },
+  {
+   "t": 22,
+   "pid": 1000,
+   "fd": 1,
+   "stream": "stdout",
+   "bytes": "padre: listo\n"
+  }
+ ],
+ "summary": {
+  "leaks": [],
+  "memErrors": []
+ }
+}
