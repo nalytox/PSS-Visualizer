@@ -134,3 +134,57 @@ describe('resolvePointer con tipo', () => {
     expect(resolvePointer(cells, 0x100, 'int')?.type).toBe('int');
   });
 });
+
+describe('procesos (trazas reales de la fase 2)', () => {
+  const refs = fileURLToPath(new URL('../../../../traces/reference/', import.meta.url));
+  const real = (name: string) => JSON.parse(readFileSync(refs + name + '.json', 'utf8')) as Trace;
+  const stepWhere = (trace: Trace, pred: (s: Trace['steps'][number]) => boolean) => trace.steps.findIndex(pred);
+
+  it('el padre bloqueado en wait queda unido a su hijo con la línea de espera', () => {
+    const trace = real('03_fork_simple');
+    const t = stepWhere(trace, (s) => s.processes[0].threads[0].blockedOn?.kind === 'wait');
+    const scene = layoutScene(trace, t, opts);
+    expect(scene.waits.map((w) => [w.parent, w.child])).toEqual([[1000, 1001]]);
+  });
+
+  it('al recogerlo, el código de salida viaja del hijo al padre', () => {
+    const trace = real('03_fork_simple');
+    const t = stepWhere(trace, (s) => s.events.some((e) => e.type === 'wait' && e.reaped === 1001));
+    const scene = layoutScene(trace, t, opts);
+    expect(scene.reaps).toHaveLength(1);
+    expect(scene.reaps[0].label).toBe('código 3');
+    expect(scene.reaps[0].curve.from.y).toBeGreaterThan(scene.reaps[0].curve.to.y);
+    expect(describeStep(trace, indexTrace(trace), t).join(' ')).toContain('código 3');
+  });
+
+  it('tras exec el hijo es una caja negra sin memoria', () => {
+    const trace = real('05_exec');
+    const t = stepWhere(trace, (s) => s.events.some((e) => e.type === 'exec'));
+    const box = layoutScene(trace, t, opts).boxes.get(1001)!;
+    expect(box.blackboxY).not.toBeNull();
+    expect(box.mem).toBeNull();
+    expect(layoutScene(trace, t - 1, opts).boxes.get(1001)!.blackboxY).toBeNull();
+  });
+
+  it('los huérfanos vivos cuelgan de init (1); los recogidos ya no', () => {
+    const trace = real('04_fork_bucle');
+    const t = stepWhere(trace, (s) => s.events.some((e) => e.type === 'reparent'));
+    const scene = layoutScene(trace, t, opts);
+    const orphans = trace.steps[t].processes.filter((p) => p.ppid === 1 && p.state !== 'reaped').map((p) => p.pid);
+    expect(scene.init).not.toBeNull();
+    expect(scene.init!.edges.map((e) => e.pid).sort()).toEqual(orphans.sort());
+    expect(layoutScene(trace, 0, opts).init).toBeNull();
+  });
+
+  it('los 8 procesos de fork en un bucle no se superponen', () => {
+    const trace = real('04_fork_bucle');
+    const boxes = [...layoutScene(trace, trace.steps.length - 2, opts).boxes.values()];
+    expect(boxes).toHaveLength(8);
+    for (const a of boxes)
+      for (const b of boxes) {
+        if (a === b) continue;
+        const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+        expect(apart, `${a.pid} y ${b.pid}`).toBe(true);
+      }
+  });
+});

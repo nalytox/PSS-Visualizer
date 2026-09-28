@@ -67,3 +67,19 @@ test('el programa editado viaja en la URL', async ({ page }) => {
   await other.keyboard.press('End');
   await expect(terminal(other)).toContainText('desde la URL');
 });
+
+test('fork + exec: el hijo se vuelve una caja negra que imprime la salida de ls', async ({ page }) => {
+  await page.goto('/#ejemplo=05_exec&t=0');
+  await waitForTrace(page);
+  await page.keyboard.press('End');
+  await expect(terminal(page)).toContainText('prog  prog.c');
+  await expect(terminal(page)).toContainText('ls terminó');
+  await expect(page.locator('g.proc')).toHaveCount(2);
+});
+
+test('un fork bomb termina en una traza truncada por el límite de procesos', async ({ page }) => {
+  await page.goto('/#ejemplo=16_fork_bomb&t=0');
+  await waitForTrace(page);
+  await page.keyboard.press('End');
+  await expect(page.locator('.narration')).toContainText('límite de 32 procesos');
+});

@@ -13,9 +13,12 @@ pub struct Block {
     pub alloc_at: u64,
     pub alloc_line: u32,
     pub freed_at: Option<u64>,
+    /// Contenido al momento del free: después libc escribe ahí sus propios datos (con una clave
+    /// aleatoria por proceso), así que el bloque liberado se muestra con lo que tenía.
+    pub last_contents: Option<Vec<u8>>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Heap {
     pub blocks: Vec<Block>,
 }
@@ -30,6 +33,7 @@ impl Heap {
             alloc_at: t,
             alloc_line: line,
             freed_at: None,
+            last_contents: None,
         });
     }
 
@@ -42,6 +46,22 @@ impl Heap {
             Some(_) => Err(FreeError::DoubleFree),
             None => Err(FreeError::InvalidPointer),
         }
+    }
+
+    /// Guarda el contenido de un bloque vivo justo antes de liberarlo.
+    pub fn remember(&mut self, addr: u64, read: impl FnOnce(u64) -> Option<Vec<u8>>) {
+        if let Some(b) = self.blocks.iter_mut().find(|b| b.addr == addr && b.freed_at.is_none()) {
+            b.last_contents = read(b.size);
+        }
+    }
+
+    /// Bytes de un bloque liberado que cubren [addr, addr + len), si los hay.
+    pub fn freed_bytes(&self, addr: u64, len: usize) -> Option<&[u8]> {
+        self.blocks.iter().find_map(|b| {
+            let c = b.last_contents.as_ref().filter(|_| b.freed_at.is_some())?;
+            let off = addr.checked_sub(b.addr)? as usize;
+            c.get(off..off + len)
+        })
     }
 
     pub fn live(&self) -> impl Iterator<Item = &Block> {

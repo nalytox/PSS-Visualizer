@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const TRACES = ['fork_pipe', 'threads_mutex', 'signal_handler', 'structs_heap', 'fork_tree'];
+const TRACES = ['fork_pipe', 'threads_mutex', 'signal_handler', 'structs_heap', 'fork_tree', '03_fork_simple', '04_fork_bucle', '05_exec', '16_fork_bomb'];
 
 function collectErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -80,4 +80,24 @@ test('un paso responde en menos de 100 ms con 16 procesos en pantalla', async ({
     return times[10];
   });
   expect(median).toBeLessThan(100);
+});
+
+test('wait se dibuja como una espera entre padre e hijo, y el hijo recogido queda como silueta', async ({ page }) => {
+  await page.goto('/#traza=03_fork_simple&t=0');
+  await expect(page.locator('g.proc')).toHaveCount(1);
+  // Avanza hasta que el padre queda bloqueado en wait.
+  for (let i = 0; i < 20 && (await page.locator('.wait-line').count()) === 0; i++) await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.wait-line')).toHaveCount(1);
+  await page.keyboard.press('End');
+  await expect(page.locator('.wait-line')).toHaveCount(0);
+  await expect(page.locator('g.proc.reaped')).toHaveCount(1);
+});
+
+test('con más de ocho procesos aparece el minimapa', async ({ page }) => {
+  await page.goto('/#traza=16_fork_bomb&t=0');
+  await expect(page.locator('g.proc')).toHaveCount(1);
+  await expect(page.locator('.minimap')).toHaveCount(0);
+  await page.keyboard.press('End');
+  await expect(page.locator('g.proc')).toHaveCount(32);
+  await expect(page.locator('.minimap')).toBeVisible();
 });

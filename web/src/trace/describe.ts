@@ -89,16 +89,23 @@ function eventText(index: TraceIndex, step: Step, prev: Step | undefined, ev: Ev
     case 'threadCreate':
       return `Se crea el hilo ${threadLabel(index, ev.tid)} (${ev.tid}), que empieza en ${ev.fn}(${valueText(ev.arg)}).`;
     case 'exec':
-      return `El proceso ${ev.pid} reemplaza su programa por ${ev.path}. Conserva su PID y sus descriptores abiertos.`;
+      return `El proceso ${ev.pid} reemplaza su programa por ${ev.path}. Conserva su PID y sus descriptores abiertos.${
+        ev.blackbox ? ' El nuevo programa no tiene símbolos de depuración: se ve como una caja negra, solo con su salida.' : ''
+      }`;
     case 'exit':
       if (ev.scope === 'thread') return `El hilo ${threadLabel(index, ev.tid ?? 0)} (${ev.tid}) terminó.`;
-      if (ev.signal) return `El proceso ${ev.pid} fue terminado por ${ev.signal}.`;
-      return processAt(step, ev.pid)?.ppid === null
-        ? `El programa terminó con código ${ev.code}.`
-        : `El proceso ${ev.pid} terminó con código ${ev.code}. Queda zombie hasta que su padre haga wait.`;
+      {
+        const p = processAt(step, ev.pid);
+        const how = ev.signal ? `fue terminado por ${ev.signal}` : `terminó con código ${ev.code}`;
+        if (p?.ppid === null) return ev.signal ? `El programa ${how}.` : `El programa terminó con código ${ev.code}.`;
+        if (p?.state === 'reaped') return `El proceso ${ev.pid} ${how}. Como era huérfano, init lo recoge de inmediato.`;
+        return `El proceso ${ev.pid} ${how}. Queda zombie hasta que su padre haga wait.`;
+      }
     case 'wait':
-      if (ev.reaped === undefined) return null;
-      return `El proceso ${ev.pid} recogió a su hijo ${ev.reaped}${ev.status && 'code' in ev.status ? `, que había salido con código ${ev.status.code}` : ''}.`;
+      if (ev.reaped === undefined) return `El proceso ${ev.pid} preguntó con WNOHANG: ningún hijo terminó todavía, así que sigue sin esperar.`;
+      return `El proceso ${ev.pid} recogió a su hijo ${ev.reaped}${
+        !ev.status ? '' : 'code' in ev.status ? `, que había salido con código ${ev.status.code}` : `, que murió por ${ev.status.signal}`
+      }.`;
     case 'join':
       return `El hilo ${threadLabel(index, ev.tid)} se unió al hilo ${threadLabel(index, ev.target)}: ya terminó y sus recursos se liberan.`;
     case 'reparent':

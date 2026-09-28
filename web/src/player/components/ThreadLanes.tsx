@@ -2,7 +2,7 @@
 import { motion } from 'motion/react';
 import { Hourglass, Lock, Zap } from 'lucide-react';
 import { blockText } from '../../trace/describe.ts';
-import { excerpt, threadAt, threadLabel } from '../../trace/query.ts';
+import { excerpt, processAt, threadAt, threadLabel } from '../../trace/query.ts';
 import type { BlockReason, Step, Thread } from '../../trace/types.ts';
 import { BOX_PAD, COL_W, LABEL_W, LANE_H, LANES_PAD_TOP, NOW_W, WINDOW } from '../layout/constants.ts';
 import type { BoxLayout } from '../layout/sceneLayout.ts';
@@ -224,9 +224,15 @@ function LaneHistory(props: {
     // Nodo: el hilo dio un paso aquí.
     if (step.actor?.tid === tid && step.actor.pid === pid) {
       const line = step.executed?.line;
+      const image = processAt(step, pid)?.image;
+      const blackbox = !line && image?.kind === 'blackbox';
       const tip = {
-        title: `t=${s} · ${line ? `línea ${line}` : 'sin línea propia'}`,
-        body: line ? excerpt(index, line, 60) : 'El kernel desvió el hilo (por ejemplo, para entregar una señal).',
+        title: `t=${s} · ${line ? `línea ${line}` : blackbox ? image.path : 'sin línea propia'}`,
+        body: line
+          ? excerpt(index, line, 60)
+          : blackbox
+            ? 'Avanzó el programa cargado con exec: no tiene líneas propias que mostrar.'
+            : 'El kernel desvió el hilo (por ejemplo, para entregar una señal).',
       };
       parts.push(
         <g
@@ -245,6 +251,8 @@ function LaneHistory(props: {
           <circle cx={X(s)} cy={y} r={9} className="lane-node-hit" />
           {line ? (
             <circle cx={X(s)} cy={y} r={4.5} style={{ fill: ink }} className={s === player.t ? 'lane-node-now' : undefined} />
+          ) : blackbox ? (
+            <rect x={X(s) - 4.5} y={y - 4.5} width={9} height={9} rx={2} className="lane-node-blackbox" />
           ) : (
             <path d={`M${X(s) - 4},${y} L${X(s)},${y - 5} L${X(s) + 4},${y} L${X(s)},${y + 5} z`} style={{ fill: 'var(--sig-user)' }} />
           )}
@@ -316,6 +324,19 @@ function NowCell(props: {
     );
   }
   const running = step.actor?.tid === tid;
+  const image = processAt(step, pid)?.image;
+  if (image?.kind === 'blackbox' && th.line === null) {
+    const name = image.argv[0] ?? image.path;
+    return (
+      <g {...tipProps(ctx, { title: `Ejecuta ${image.path}`, body: 'Un programa sin símbolos: no hay líneas que seguir, solo su salida y sus syscalls.' })}>
+        <rect x={x} y={y - 11} width={w} height={22} rx={11} className={running ? 'now-running' : 'now-ready'} style={running ? { stroke: ink } : undefined} />
+        <rect x={x + 9} y={y - 5} width={10} height={10} rx={2} className="now-blackbox" />
+        <text x={x + 25} y={y + 4} className={`now-text${running ? ' strong' : ''}`}>
+          ejecutando {name.length > 16 ? name.slice(0, 15) + '…' : name}
+        </text>
+      </g>
+    );
+  }
   const line = th.line;
   const label = `${line ?? '?'} · ${excerpt(index, line, 18)}`;
   return (

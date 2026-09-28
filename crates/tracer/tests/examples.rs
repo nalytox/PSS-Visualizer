@@ -72,9 +72,103 @@ fn stdin_asks_for_more_when_it_runs_out() {
     assert_eq!(t["steps"].as_array().unwrap().last().unwrap()["stdin"]["consumed"], 6);
 }
 
+fn processes_at(t: &serde_json::Value, step: usize) -> &Vec<serde_json::Value> {
+    t["steps"][step]["processes"].as_array().unwrap()
+}
+
+fn outputs(t: &serde_json::Value) -> Vec<(u64, String)> {
+    t["output"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| (c["pid"].as_u64().unwrap(), c["bytes"].as_str().unwrap().to_string()))
+        .collect()
+}
+
+fn events_of<'a>(t: &'a serde_json::Value, kind: &str) -> Vec<&'a serde_json::Value> {
+    t["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|s| s["events"].as_array().unwrap())
+        .filter(|e| e["type"] == kind)
+        .collect()
+}
+
+#[test]
+fn fork_wait_reaps_the_zombie() {
+    let t = check("03_fork_simple");
+    assert_eq!(t["outcome"]["code"], 0);
+    let out = outputs(&t);
+    assert!(out.contains(&(1001, "hijo: x = 15\n".into())));
+    assert!(out.contains(&(1000, "padre: x = 5, mi hijo es 1001\n".into())));
+    assert_eq!(out.last().unwrap().1, "el hijo termin\u{c3}\u{b3} con 3\n");
+    let wait = events_of(&t, "wait");
+    assert_eq!(wait.len(), 1);
+    assert_eq!(wait[0]["reaped"], 1001);
+    assert_eq!(wait[0]["status"]["code"], 3);
+    // El hijo pasa por zombie antes de que el padre lo recoja.
+    let states: Vec<&str> = (0..t["steps"].as_array().unwrap().len())
+        .filter_map(|k| processes_at(&t, k).iter().find(|p| p["pid"] == 1001))
+        .map(|p| p["state"].as_str().unwrap())
+        .collect();
+    let zombie = states.iter().position(|s| *s == "zombie").unwrap();
+    assert!(states[zombie..].iter().all(|s| *s == "zombie" || *s == "reaped"));
+    assert_eq!(*states.last().unwrap(), "reaped");
+}
+
+#[test]
+fn three_forks_make_eight_processes() {
+    let t = check("04_fork_bucle");
+    let last = processes_at(&t, t["steps"].as_array().unwrap().len() - 1);
+    assert_eq!(last.len(), 8);
+    let mut lines: Vec<String> = outputs(&t).into_iter().map(|(_, s)| s).collect();
+    lines.sort();
+    assert_eq!(lines.len(), 8);
+    // Los hijos cuyo padre ya terminó ven a init como padre.
+    assert!(!events_of(&t, "reparent").is_empty());
+}
+
+#[test]
+fn exec_turns_the_child_into_a_black_box() {
+    let t = check("05_exec");
+    let exec = events_of(&t, "exec");
+    assert_eq!(exec.len(), 1);
+    assert_eq!(exec[0]["pid"], 1001);
+    assert_eq!(exec[0]["argv"], serde_json::json!(["ls"]));
+    assert!(exec[0]["path"].as_str().unwrap().ends_with("/ls"));
+    let out = outputs(&t);
+    assert_eq!(out[1], (1001, "prog  prog.c\n".into()));
+    assert_eq!(out[2], (1000, "ls termin\u{c3}\u{b3}\n".into()));
+    let after = t["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["events"].as_array().unwrap().iter().any(|e| e["type"] == "exec"))
+        .unwrap();
+    let child = after["processes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["pid"] == 1001)
+        .unwrap();
+    assert_eq!(child["image"]["kind"], "blackbox");
+    assert!(child["mem"].is_null());
+}
+
+#[test]
+fn fork_bomb_stops_at_the_process_limit() {
+    let t = check("16_fork_bomb");
+    assert_eq!(t["truncated"], true);
+    assert_eq!(t["truncatedReason"], "processes");
+    let last = processes_at(&t, t["steps"].as_array().unwrap().len() - 1);
+    assert_eq!(last.len(), 32);
+}
+
 #[test]
 fn same_input_gives_the_same_trace() {
     assert_eq!(trace_example("02_lista_enlazada"), trace_example("02_lista_enlazada"));
+    assert_eq!(trace_example("04_fork_bucle"), trace_example("04_fork_bucle"));
 }
 
 #[test]
@@ -154,7 +248,15 @@ fn every_reference_trace_matches_the_schema() {
     let schema: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(root().join("schema/trace.schema.json")).unwrap()).unwrap();
     let validator = jsonschema::validator_for(&schema).unwrap();
-    for name in ["01_structs", "02_lista_enlazada", "entrada_estandar"] {
+    for name in [
+        "01_structs",
+        "02_lista_enlazada",
+        "entrada_estandar",
+        "03_fork_simple",
+        "04_fork_bucle",
+        "05_exec",
+        "16_fork_bomb",
+    ] {
         let t = trace_example(name);
         let errors: Vec<String> = validator.iter_errors(&t).take(3).map(|e| e.to_string()).collect();
         assert!(errors.is_empty(), "{name}: {errors:?}");

@@ -6,7 +6,7 @@ import { decodeBytes } from '../../trace/bytes.ts';
 import { blockText, fdText } from '../../trace/describe.ts';
 import { outputUpTo, processAt, snapshotOf, threadLabel } from '../../trace/query.ts';
 import type { Fd, Process } from '../../trace/types.ts';
-import { BOX_PAD, CONSOLE_H, CONSOLE_LINES, HEADER_H, MEM_TITLE_H, PORT_H, PORT_W } from '../layout/constants.ts';
+import { BLACKBOX_H, BOX_PAD, COL_W, CONSOLE_H, CONSOLE_LINES, HEADER_H, LABEL_W, MEM_TITLE_H, PORT_H, PORT_W, WINDOW } from '../layout/constants.ts';
 import { layoutMemory } from '../layout/memoryLayout.ts';
 import type { BoxLayout, PortLayout } from '../layout/sceneLayout.ts';
 import { fillOf, inkOf, threadInk, tipProps, useScene } from '../SceneContext.tsx';
@@ -57,6 +57,10 @@ export function ProcessBox(props: { box: BoxLayout; proc: Process; bornFrom?: { 
   const flashHandler = forward && events.some((e) => e.type === 'signalDeliver' && e.pid === proc.pid && e.action === 'handler');
   const flashKill = forward && events.some((e) => e.type === 'signalDeliver' && e.pid === proc.pid && (e.action === 'terminate' || e.action === 'core'));
   const justForked = forward && events.some((e) => e.type === 'fork' && e.child === proc.pid);
+  const justExeced = forward && events.some((e) => e.type === 'exec' && e.pid === proc.pid);
+  // Sobre la línea del fork, lo que devolvió en cada lado: el PID del hijo al padre y 0 al hijo.
+  const fork = events.find((e) => e.type === 'fork' && (e.parent === proc.pid || e.child === proc.pid));
+  const forkRet = fork?.type === 'fork' ? { name: fork.vfork ? 'vfork' : 'fork', value: fork.parent === proc.pid ? fork.child : 0 } : null;
 
   // Vista previa: al pasar sobre un nodo de carril se muestra la memoria de ese instante.
   const memT = player.hoverT ?? t;
@@ -176,6 +180,27 @@ export function ProcessBox(props: { box: BoxLayout; proc: Process; bornFrom?: { 
           </g>
         ) : null}
 
+        {box.blackboxY !== null && proc.image.kind === 'blackbox' && (
+          <motion.g
+            key={`blackbox-${proc.image.path}`}
+            initial={justExeced ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, ease: EASE }}
+            {...tipProps(ctx, {
+              title: `Caja negra: ${proc.image.path}`,
+              body: 'exec reemplazó el programa. El PID, el color y los fds abiertos se conservan; como el nuevo programa no tiene símbolos de depuración, solo se ven su salida y sus syscalls.',
+            })}
+          >
+            <rect x={BOX_PAD - 4} y={box.blackboxY + 6} width={box.w - 2 * BOX_PAD + 8} height={BLACKBOX_H - 12} rx={10} className="blackbox" />
+            <text x={BOX_PAD + 10} y={box.blackboxY + 32} className="blackbox-title">
+              {proc.image.argv.length > 0 ? proc.image.argv.join(' ') : proc.image.path}
+            </text>
+            <text x={BOX_PAD + 10} y={box.blackboxY + 50} className="blackbox-note">
+              caja negra · {proc.image.path} · sin símbolos: solo su salida y sus syscalls
+            </text>
+          </motion.g>
+        )}
+
         <g className="console" {...tipProps(ctx, { title: `Consola del proceso ${proc.pid}`, body: 'Lo que este proceso escribió en stdout y stderr (en rojo).' })}>
           <rect x={BOX_PAD - 4} y={box.consoleY + 4} width={box.w - 2 * BOX_PAD + 8} height={CONSOLE_H - 12} rx={10} className="console-bg" />
           <text x={BOX_PAD + 6} y={box.consoleY + 17} className="console-label">
@@ -193,6 +218,21 @@ export function ProcessBox(props: { box: BoxLayout; proc: Process; bornFrom?: { 
           ))}
         </g>
       </g>
+
+      {forkRet && (
+        <g
+          className="fork-ret"
+          {...tipProps(ctx, {
+            title: `${forkRet.name}() devolvió ${forkRet.value}`,
+            body: forkRet.value === 0 ? 'En el hijo, fork devuelve 0: así sabe que es el hijo.' : `En el padre, fork devuelve el PID del hijo (${forkRet.value}).`,
+          })}
+        >
+          <rect x={BOX_PAD + LABEL_W + WINDOW * COL_W + 10} y={box.lanesY + 2} width={116} height={18} rx={9} />
+          <text x={BOX_PAD + LABEL_W + WINDOW * COL_W + 20} y={box.lanesY + 15}>
+            {forkRet.name}() = {forkRet.value}
+          </text>
+        </g>
+      )}
 
       {box.ports.map((port) => (
         <Port key={port.fd} port={port} box={box} pid={proc.pid} ink={ink} />

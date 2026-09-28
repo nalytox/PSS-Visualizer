@@ -22,6 +22,10 @@ export const CONSOLE_LINES = 2;
 export const CONSOLE_H = 30 + CONSOLE_LINES * 15;
 export const MIN_BOX_W = BOX_PAD * 2 + LABEL_W + WINDOW * COL_W + NOW_W;
 
+export const BLACKBOX_H = 74;
+export const INIT_W = 116;
+export const INIT_H = 40;
+
 export const REAPED_W = 170;
 export const REAPED_H = 40;
 

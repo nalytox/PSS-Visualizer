@@ -42,6 +42,20 @@ export function Overlays({ scene }: { scene: SceneLayout }) {
   const items: React.ReactNode[] = [];
   const tubeOf = (id: string): PipeLayout | undefined => scene.pipes.find((x) => x.id === id);
 
+  // El estado de salida del hijo recogido viaja hacia el padre por la línea de wait.
+  for (const r of anim.step === player.t ? scene.reaps : []) {
+    const pos = bezierPoint(r.curve.from, r.curve.c1, r.curve.c2, r.curve.to, ease(p));
+    const w = r.label.length * 7 + 22;
+    items.push(
+      <g key={r.key} className="reap-token" transform={`translate(${pos.x},${pos.y})`}>
+        <rect x={-w / 2} y={-11} width={w} height={22} rx={11} />
+        <text y={4} textAnchor="middle">
+          {r.label}
+        </text>
+      </g>,
+    );
+  }
+
   step.events.forEach((ev, ei) => {
     if (ev.type === 'write' && ev.pipe) {
       const cable = scene.cables.find((c) => c.pid === ev.pid && c.fd === ev.fd);

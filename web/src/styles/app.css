@@ -1668,3 +1668,137 @@ button.run:hover:not(:disabled) {
     transform: rotate(360deg);
   }
 }
+
+/* ---------- fase 2: exec, wait, init y minimapa ---------- */
+.blackbox {
+  fill: var(--blackbox);
+}
+
+.blackbox-title {
+  font-family: var(--font-code);
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--blackbox-text);
+}
+
+.blackbox-note {
+  font-size: 11px;
+  fill: var(--blackbox-text);
+}
+
+.lane-node-blackbox,
+.now-blackbox {
+  fill: var(--blackbox);
+}
+
+.fork-ret rect {
+  fill: var(--orange-soft);
+  stroke: var(--orange);
+}
+
+.fork-ret text {
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+.wait-line {
+  fill: none;
+  stroke: var(--blocked);
+  stroke-width: 2;
+  stroke-dasharray: 6 6;
+  animation: wait-flow 1.2s linear infinite;
+}
+
+@keyframes wait-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wait-line {
+    animation: none;
+  }
+}
+
+.wait-badge {
+  fill: var(--blocked-soft);
+  stroke: var(--blocked);
+  stroke-width: 1.5;
+}
+
+.wait-icon {
+  color: var(--text);
+}
+
+.reap-token rect {
+  fill: var(--surface);
+  stroke: var(--purple);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 3px 8px var(--glow));
+}
+
+.reap-token text {
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+.init-body {
+  fill: var(--surface-2);
+  stroke: var(--purple);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.init-text {
+  font-family: var(--font-code);
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+.init-edge {
+  fill: none;
+  stroke: var(--purple);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 6;
+  opacity: 0.8;
+}
+
+.minimap {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+}
+
+.minimap svg {
+  display: block;
+}
+
+.minimap-box {
+  opacity: 0.55;
+}
+
+.minimap-box.actor {
+  opacity: 1;
+}
+
+.minimap-box.reaped {
+  opacity: 0.25;
+}
+
+.minimap-view {
+  fill: var(--purple);
+  fill-opacity: 0.08;
+  stroke: var(--purple);
+  stroke-width: 1.5;
+}

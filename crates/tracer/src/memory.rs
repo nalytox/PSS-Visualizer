@@ -250,9 +250,15 @@ impl<'a> Reader<'a> {
     fn poisoned(&self, addr: u64, size: u64) -> bool {
         size > 0
             && self
-                .tracee
                 .read(addr, size.min(4096) as usize)
                 .is_some_and(|b| b.iter().all(|x| *x == POISON))
+    }
+
+    fn read(&self, addr: u64, len: usize) -> Option<Vec<u8>> {
+        match self.heap.freed_bytes(addr, len) {
+            Some(b) => Some(b.to_vec()),
+            None => self.tracee.read(addr, len),
+        }
     }
 
     /// Devuelve el valor y si está sin inicializar.
@@ -266,7 +272,7 @@ impl<'a> Reader<'a> {
         let uninit = self.poisoned(addr, size);
         let value = match &debug.types[st] {
             TypeKind::Base { .. } | TypeKind::Enum { .. } | TypeKind::Pointer { .. } => {
-                match self.tracee.read(addr, size as usize) {
+                match self.read(addr, size as usize) {
                     Some(bytes) => self.from_bytes(st, &bytes),
                     None => Value::Opaque {
                         note: "memoria no legible".into(),
@@ -315,7 +321,7 @@ impl<'a> Reader<'a> {
             items.push(self.value(elem, addr + i * es, depth + 1).0);
         }
         let text = if is_char {
-            self.tracee.read(addr, count.min(4096) as usize).map(|b| {
+            self.read(addr, count.min(4096) as usize).map(|b| {
                 let end = b.iter().position(|x| *x == 0).unwrap_or(b.len());
                 latin1(&b[..end])
             })

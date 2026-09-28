@@ -43,6 +43,7 @@ describe.each([
     ['text', 'orange-soft'],
     ['capsule-text', 'capsule'],
     ['stderr', 'surface'],
+    ['blackbox-text', 'blackbox'],
     ...Array.from({ length: 8 }, (_, i) => ['text', `proc-${i}`] as [string, string]),
   ];
   it.each(pairs)('%s sobre %s cumple AA', (fg, bg) => {

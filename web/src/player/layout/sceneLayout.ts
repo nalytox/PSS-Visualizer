@@ -4,11 +4,14 @@
 import { indexTrace, processAt, snapshotOf, threadLabel, type TraceIndex } from '../../trace/query.ts';
 import type { Fd, Pipe, Process, SignalSource, Step, Trace } from '../../trace/types.ts';
 import {
+  BLACKBOX_H,
   BOX_PAD,
   CONSOLE_H,
   GAP_X,
   GAP_Y,
   HEADER_H,
+  INIT_H,
+  INIT_W,
   LANE_H,
   LANES_PAD_BOTTOM,
   LANES_PAD_TOP,
@@ -48,6 +51,7 @@ export interface BoxLayout {
   memY: number;
   mem: MemoryLayout | null;
   memOpen: boolean;
+  blackboxY: number | null; // tras un exec sin símbolos, franja de caja negra en vez de memoria
   consoleY: number;
   ports: PortLayout[];
   sigPort: Pt;
@@ -95,12 +99,48 @@ export interface EdgeLayout {
   reaped: boolean;
 }
 
+export interface Curve {
+  from: Pt;
+  c1: Pt;
+  c2: Pt;
+  to: Pt;
+  d: string;
+}
+
+// Un padre bloqueado en wait y uno de los hijos que puede recoger.
+export interface WaitLayout {
+  key: string;
+  parent: number;
+  child: number;
+  curve: Curve; // del padre al hijo
+  mid: Pt;
+}
+
+// El estado de salida viaja del hijo recogido al padre.
+export interface ReapLayout {
+  key: string;
+  child: number;
+  label: string;
+  curve: Curve; // del hijo al padre
+}
+
+export interface InitLayout {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  edges: { key: string; pid: number; d: string }[];
+}
+
 export interface SceneLayout {
   boxes: Map<number, BoxLayout>;
   pipes: PipeLayout[];
   cables: CableLayout[];
   signals: SignalLayout[];
   edges: EdgeLayout[];
+  waits: WaitLayout[];
+  reaps: ReapLayout[];
+  init: InitLayout | null;
   bounds: Rect;
 }
 
@@ -124,7 +164,7 @@ function leaksOf(trace: Trace, pid: number, t: number): Set<string> {
 
 function boxSize(trace: Trace, index: TraceIndex, step: Step, p: Process, opts: SceneOptions): Omit<BoxLayout, 'x' | 'y' | 'ports' | 'sigPort'> {
   if (p.state === 'reaped') {
-    return { pid: p.pid, w: REAPED_W, h: REAPED_H, compact: true, lanes: [], lanesY: 0, memY: 0, mem: null, memOpen: false, consoleY: 0 };
+    return { pid: p.pid, w: REAPED_W, h: REAPED_H, compact: true, lanes: [], lanesY: 0, memY: 0, mem: null, memOpen: false, blackboxY: null, consoleY: 0 };
   }
   const lanes = lanesOf(trace, index, step.t, p.pid);
   const snap = snapshotOf(trace, p);
@@ -144,10 +184,11 @@ function boxSize(trace: Trace, index: TraceIndex, step: Step, p: Process, opts: 
   const lanesY = HEADER_H;
   const lanesH = LANES_PAD_TOP + Math.max(1, lanes.length) * LANE_H + LANES_PAD_BOTTOM;
   const memY = lanesY + lanesH;
-  const memH = snap ? MEM_TITLE_H + (mem ? mem.h + 14 : 0) : 0;
+  const blackbox = p.image.kind === 'blackbox';
+  const memH = blackbox ? BLACKBOX_H : snap ? MEM_TITLE_H + (mem ? mem.h + 14 : 0) : 0;
   const consoleY = memY + memH;
   const w = Math.max(MIN_BOX_W, mem ? mem.w + BOX_PAD * 2 : 0);
-  return { pid: p.pid, w, h: consoleY + CONSOLE_H, compact: false, lanes, lanesY, memY, mem, memOpen, consoleY };
+  return { pid: p.pid, w, h: consoleY + CONSOLE_H, compact: false, lanes, lanesY, memY, mem, memOpen, blackboxY: blackbox ? memY : null, consoleY };
 }
 
 type Sized = Omit<BoxLayout, 'x' | 'y' | 'ports' | 'sigPort'>;
@@ -209,6 +250,78 @@ function placeTree(procs: Process[], sizes: Map<number, Sized>, index: TraceInde
 }
 
 const SQ = Math.SQRT1_2;
+
+function curve(from: Pt, c1: Pt, c2: Pt, to: Pt): Curve {
+  return { from, c1, c2, to, d: cablePath(from, c1, c2, to) };
+}
+
+// Curva vertical entre el borde inferior del padre y el superior del hijo, corrida `dx` para no
+// taparse con la línea del árbol.
+function familyCurve(pb: BoxLayout, cb: BoxLayout, dx: number): Curve {
+  const a = { x: pb.x + pb.w / 2 + dx, y: pb.y + pb.h };
+  const c = { x: cb.x + cb.w / 2 + dx, y: cb.y };
+  const my = (a.y + c.y) / 2;
+  return curve(a, { x: a.x, y: my }, { x: c.x, y: my }, c);
+}
+
+function waitsOn(step: Step, parent: Process, target: number): Process[] {
+  return step.processes.filter(
+    (c) =>
+      c.ppid === parent.pid &&
+      c.state !== 'reaped' &&
+      (target === -1 || (target > 0 ? c.pid === target : c.pgid === (target === 0 ? parent.pgid : -target))),
+  );
+}
+
+function placeWaits(step: Step, boxes: Map<number, BoxLayout>): WaitLayout[] {
+  const out: WaitLayout[] = [];
+  for (const p of step.processes) {
+    const r = p.threads.find((th) => th.blockedOn?.kind === 'wait')?.blockedOn;
+    if (r?.kind !== 'wait') continue;
+    const pb = boxes.get(p.pid);
+    for (const c of waitsOn(step, p, r.target)) {
+      const cb = boxes.get(c.pid);
+      if (!pb || !cb) continue;
+      const cv = familyCurve(pb, cb, 34);
+      out.push({ key: `${p.pid}-${c.pid}`, parent: p.pid, child: c.pid, curve: cv, mid: bezierPoint(cv.from, cv.c1, cv.c2, cv.to, 0.5) });
+    }
+  }
+  return out;
+}
+
+function placeReaps(step: Step, boxes: Map<number, BoxLayout>): ReapLayout[] {
+  const out: ReapLayout[] = [];
+  for (const ev of step.events) {
+    if (ev.type !== 'wait' || ev.reaped === undefined) continue;
+    const pb = boxes.get(ev.pid);
+    const cb = boxes.get(ev.reaped);
+    if (!pb || !cb) continue;
+    const down = familyCurve(pb, cb, 34);
+    const label = !ev.status ? 'recogido' : 'code' in ev.status ? `código ${ev.status.code}` : ev.status.signal;
+    out.push({ key: `reap-${ev.pid}-${ev.reaped}`, child: ev.reaped, label, curve: curve(down.to, down.c2, down.c1, down.from) });
+  }
+  return out;
+}
+
+// Nodo virtual init (1): arriba a la izquierda del árbol. Sus líneas punteadas corren por un riel
+// sobre el árbol y bajan a cada huérfano vivo; van detrás de los cuadrados, así que solo se ven
+// entre ellos.
+function placeInit(step: Step, boxes: Map<number, BoxLayout>, left: number, top: number): InitLayout | null {
+  const orphans = step.processes.filter((p) => p.ppid === 1);
+  if (orphans.length === 0) return null;
+  const railY = top - 50;
+  const x = left - INIT_W - 40;
+  const y = railY - INIT_H / 2;
+  const edges = orphans
+    .filter((p) => p.state !== 'reaped')
+    .flatMap((p) => {
+      const b = boxes.get(p.pid);
+      if (!b) return [];
+      const cx = b.x + 48;
+      return [{ key: `init-${p.pid}`, pid: p.pid, d: `M${x + INIT_W},${railY} H${cx - 12} Q${cx},${railY} ${cx},${railY + 12} V${b.y}` }];
+    });
+  return { x, y, w: INIT_W, h: INIT_H, edges };
+}
 
 function placePipes(step: Step, boxes: Map<number, BoxLayout>): PipeLayout[] {
   const out: PipeLayout[] = [];
@@ -419,6 +532,8 @@ export function layoutScene(trace: Trace, t: number, opts: SceneOptions, index: 
   const signals = placeSignals(trace, step, boxes, minY);
   for (const pl of pipes) grow(pl.cx - 80, pl.cy - 80, 160, 160);
   for (const s of signals) grow(s.x, s.y, s.w, s.h);
+  const init = placeInit(step, boxes, minX, minY);
+  if (init) grow(init.x, init.y, init.w, init.h);
 
   const edges: EdgeLayout[] = [];
   for (const b of boxes.values()) {
@@ -438,6 +553,9 @@ export function layoutScene(trace: Trace, t: number, opts: SceneOptions, index: 
     cables,
     signals,
     edges,
+    waits: placeWaits(step, boxes),
+    reaps: placeReaps(step, boxes),
+    init,
     bounds: { x: minX - margin, y: minY - margin, w: maxX - minX + 2 * margin, h: maxY - minY + 2 * margin },
   };
 }

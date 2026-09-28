@@ -6,9 +6,10 @@ Programación de Sistemas: `fork`, `exec`, `wait`, `pipe`, `dup2`, señales, `pt
 
 Todo corre en tu computador. No se sube código a ningún servidor.
 
-> **Estado: fase 1.** Compila y traza programas de un solo proceso y un hilo, con memoria completa
-> (structs, arreglos, punteros, heap) y entrada estándar. Procesos, pipes, señales e hilos llegan en
-> las fases 2 a 5 (ver `docs/fases/`).
+> **Estado: fase 2.** Compila y traza programas con varios procesos: `fork`, `exec` (el programa
+> cargado se ve como caja negra), `wait`, `exit`, zombies y huérfanos adoptados por `init (1)`, con
+> memoria completa (structs, arreglos, punteros, heap) y entrada estándar. Pipes, señales e hilos
+> llegan en las fases 3 a 5 (ver `docs/fases/`).
 
 ## Cómo ejecutarlo
 

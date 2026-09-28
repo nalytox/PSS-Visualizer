@@ -7,6 +7,8 @@ import type { Trace } from '../trace/types.ts';
 import { layoutScene } from './layout/sceneLayout.ts';
 import { Cables } from './components/Cables.tsx';
 import { Defs } from './components/Defs.tsx';
+import { InitNode, WaitLines } from './components/Family.tsx';
+import { Minimap } from './components/Minimap.tsx';
 import { Overlays, hiddenCapsules } from './components/Overlays.tsx';
 import { PipeTube } from './components/PipeTube.tsx';
 import { ProcessBox } from './components/ProcessBox.tsx';
@@ -197,6 +199,8 @@ export function Canvas({ trace, index, player }: { trace: Trace; index: TraceInd
                 <path key={e.key} d={e.d} className={`tree-edge${e.reaped ? ' reaped' : ''}`} />
               ))}
             </g>
+            {scene.init && <InitNode init={scene.init} />}
+            <WaitLines waits={scene.waits} animate={smooth} />
             <AnimatePresence>
               {scene.signals.map((s) => (
                 <SignalBlock key={s.key} s={s} animate={smooth} />
@@ -228,6 +232,9 @@ export function Canvas({ trace, index, player }: { trace: Trace; index: TraceInd
             <Maximize size={16} />
           </button>
         </div>
+        {step.processes.length > 8 && (
+          <Minimap scene={scene} view={view} size={size} onCenter={(x, y) => setView((v) => ({ ...v, x: size.w / 2 - x * v.k, y: size.h / 2 - y * v.k, smooth: false }))} />
+        )}
         <Tooltip state={tip} />
       </div>
     </SceneContext.Provider>

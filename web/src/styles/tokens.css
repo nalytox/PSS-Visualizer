@@ -34,6 +34,9 @@
   --danger: #d9534f;
   --stderr: #c2413b;
   --success: #3f9c74;
+  /* Caja negra: un programa sin símbolos cargado con exec */
+  --blackbox: #3b2e5a;
+  --blackbox-text: #f5f1fe;
 
   /* Ocho tonos de proceso: fondo pastel (con texto --text encima) y tinta para líneas y cursores. */
   --proc-0: #e6e0fa; --proc-0-ink: #8c7ad9;  /* lavanda */
@@ -100,6 +103,8 @@
   --danger: #f4a09a;
   --stderr: #f4a09a;
   --success: #8fd9b6;
+  --blackbox: #130f1e;
+  --blackbox-text: #ede7fa;
   --proc-0: #3a3262; --proc-0-ink: #b9a3f0;
   --proc-1: #44305c; --proc-1-ink: #d1a8f0;
   --proc-2: #4b2d49; --proc-2-ink: #e0a3cf;
@@ -145,6 +150,8 @@
     --danger: #f4a09a;
     --stderr: #f4a09a;
     --success: #8fd9b6;
+  --blackbox: #130f1e;
+  --blackbox-text: #ede7fa;
     --proc-0: #3a3262; --proc-0-ink: #b9a3f0;
     --proc-1: #44305c; --proc-1-ink: #d1a8f0;
     --proc-2: #4b2d49; --proc-2-ink: #e0a3cf;
