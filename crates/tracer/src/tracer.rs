@@ -331,6 +331,8 @@ struct Proc {
     pthread: u64,
     /// Espera en un futex: (dirección, valor esperado). Despierta cuando el valor cambia.
     futex: Option<(u64, u32)>,
+    /// Su futex(WAIT) actual se saltó en la entrada: en la salida devuelve EAGAIN.
+    futex_skipped: bool,
 }
 
 impl Proc {
@@ -484,6 +486,7 @@ impl<'a> Engine<'a> {
             retval: None,
             pthread: 0,
             futex: None,
+            futex_skipped: false,
         };
         Engine {
             debug,
@@ -1603,6 +1606,7 @@ impl<'a> Engine<'a> {
                 let mut regs = Regs::get(pid).map_err(|_| lost())?;
                 arch::skip_syscall(pid, &mut regs).map_err(|_| lost())?;
                 self.procs[i].futex = Some((args[0], args[2] as u32));
+                self.procs[i].futex_skipped = true;
                 Err(Halt::Blocked(self.futex_reason(i, args[0])))
             }
             // pthread_exit del hilo principal: su exit no se completa hasta que terminen los demás.
@@ -1684,11 +1688,10 @@ impl<'a> Engine<'a> {
         match nr {
             arch::SYS_NANOSLEEP | arch::SYS_CLOCK_NANOSLEEP => rewrite(0)?,
             arch::SYS_PPOLL if args[1] == 0 && args[2] != 0 => rewrite(0)?,
-            // Una espera en futex que se saltó en la entrada (ver syscall_entry).
-            arch::SYS_FUTEX
-                if matches!(args[1] as i32 & 0x7f, libc::FUTEX_WAIT | libc::FUTEX_WAIT_BITSET)
-                    && ret == -(libc::ENOSYS as i64) =>
-            {
+            // Una espera en futex que se saltó en la entrada (ver syscall_entry). No basta mirar si
+            // volvió -ENOSYS: en aarch64 una syscall saltada deja x0 tal cual (la dirección).
+            arch::SYS_FUTEX if self.procs[i].futex_skipped => {
+                self.procs[i].futex_skipped = false;
                 rewrite(-(libc::EAGAIN as i64) as u64)?
             }
             arch::SYS_READ | arch::SYS_READV | arch::SYS_WRITE | arch::SYS_WRITEV => {
@@ -2140,6 +2143,7 @@ impl<'a> Engine<'a> {
             retval: None,
             pthread: 0,
             futex: None,
+            futex_skipped: false,
         };
         let parent = p.vpid;
         self.procs.push(c);
@@ -2656,6 +2660,7 @@ impl<'a> Engine<'a> {
             retval: None,
             pthread: 0,
             futex: None,
+            futex_skipped: false,
         };
         let (pid, creator) = (p.vpid, p.tid);
         self.procs.push(t);
