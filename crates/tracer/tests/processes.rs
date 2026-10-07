@@ -479,3 +479,40 @@ fn a_binary_that_cannot_be_executed_reports_why() {
     assert_eq!(r.err(), Some(nix::errno::Errno::EACCES));
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn several_threads_waiting_on_a_mutex_all_get_their_turn() {
+    // Al liberar el mutex despiertan los dos que esperaban; uno lo toma primero y el otro debe
+    // volver a esperar en el modelo, no dormirse en el kernel (antes la traza se cortaba a los 10 s).
+    let t = trace(
+        r#"#include <stdio.h>
+#include <unistd.h>
+#include <pthread.h>
+long saldo = 1000;
+int aprobados = 0;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+void *retirar(void *arg) {
+    pthread_mutex_lock(&mutex);
+    if (saldo >= 1000) {
+        usleep(1000);
+        saldo -= 1000;
+        aprobados++;
+    }
+    pthread_mutex_unlock(&mutex);
+    return NULL;
+}
+int main(void) {
+    pthread_t h[4];
+    for (int k = 0; k < 4; k++)
+        pthread_create(&h[k], NULL, retirar, NULL);
+    for (int k = 0; k < 4; k++)
+        pthread_join(h[k], NULL);
+    printf("%d %ld\n", aprobados, saldo);
+    return 0;
+}
+"#,
+        "",
+    );
+    assert!(matches!(t.outcome, Outcome::Exited { code: 0 }), "{:?}", t.outcome);
+    assert_eq!(output(&t), [(1000, "1 0\n")]);
+}

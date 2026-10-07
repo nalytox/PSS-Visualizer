@@ -1595,6 +1595,13 @@ impl<'a> Engine<'a> {
                 if now != Some(args[2] as u32) {
                     return Ok(());
                 }
+                // La espera la hace el modelo, no el kernel: al despertar, otro hilo pudo haber
+                // vuelto a dejar el mismo valor (un mutex que otro tomó primero) y el kernel
+                // dormiría al hilo de verdad. La syscall se salta y vuelve con EAGAIN, como
+                // cuando el valor ya cambió; glibc reintenta y, si toca, espera de nuevo aquí.
+                let pid = self.procs[i].pid;
+                let mut regs = Regs::get(pid).map_err(|_| lost())?;
+                arch::skip_syscall(pid, &mut regs).map_err(|_| lost())?;
                 self.procs[i].futex = Some((args[0], args[2] as u32));
                 Err(Halt::Blocked(self.futex_reason(i, args[0])))
             }
@@ -1677,6 +1684,13 @@ impl<'a> Engine<'a> {
         match nr {
             arch::SYS_NANOSLEEP | arch::SYS_CLOCK_NANOSLEEP => rewrite(0)?,
             arch::SYS_PPOLL if args[1] == 0 && args[2] != 0 => rewrite(0)?,
+            // Una espera en futex que se saltó en la entrada (ver syscall_entry).
+            arch::SYS_FUTEX
+                if matches!(args[1] as i32 & 0x7f, libc::FUTEX_WAIT | libc::FUTEX_WAIT_BITSET)
+                    && ret == -(libc::ENOSYS as i64) =>
+            {
+                rewrite(-(libc::EAGAIN as i64) as u64)?
+            }
             arch::SYS_READ | arch::SYS_READV | arch::SYS_WRITE | arch::SYS_WRITEV => {
                 return Ok(self.io_exit(i, nr, args, ret));
             }
