@@ -2,7 +2,8 @@
 // Función pura y determinista: el mismo paso produce siempre las mismas posiciones, así que al
 // avanzar o retroceder los elementos se desplazan con suavidad y nunca saltan.
 import { indexTrace, processAt, snapshotOf, threadLabel, type TraceIndex } from '../../trace/query.ts';
-import type { Fd, Pipe, Process, SignalSource, Step, Trace } from '../../trace/types.ts';
+import type { Fd, Pipe, Process, SignalSource, Step } from '../../trace/types.ts';
+import { flag, type LoadedTrace } from '../../trace/loaded.ts';
 import {
   BLACKBOX_H,
   BOX_PAD,
@@ -149,20 +150,20 @@ export interface SceneOptions {
   inkOf: (pid: number, tid: number) => string;
 }
 
-export function lanesOf(trace: Trace, index: TraceIndex, t: number, pid: number): number[] {
+export function lanesOf(trace: LoadedTrace, index: TraceIndex, t: number, pid: number): number[] {
   const tids = new Set<number>();
   for (let s = Math.max(0, t - WINDOW + 1); s <= t; s++) {
-    processAt(trace.steps[s], pid)?.threads.forEach((th) => tids.add(th.tid));
+    processAt(trace.step(s), pid)?.threads.forEach((th) => tids.add(th.tid));
   }
   return [...tids].sort((a, b) => (index.threadOrder.get(a) ?? 0) - (index.threadOrder.get(b) ?? 0));
 }
 
-function leaksOf(trace: Trace, pid: number, t: number): Set<string> {
-  const last = t === trace.steps.length - 1;
+function leaksOf(trace: LoadedTrace, pid: number, t: number): Set<string> {
+  const last = t === trace.last;
   return new Set(last ? trace.summary.leaks.filter((l) => l.pid === pid).map((l) => l.addr) : []);
 }
 
-function boxSize(trace: Trace, index: TraceIndex, step: Step, p: Process, opts: SceneOptions): Omit<BoxLayout, 'x' | 'y' | 'ports' | 'sigPort'> {
+function boxSize(trace: LoadedTrace, index: TraceIndex, step: Step, p: Process, opts: SceneOptions): Omit<BoxLayout, 'x' | 'y' | 'ports' | 'sigPort'> {
   if (p.state === 'reaped') {
     return { pid: p.pid, w: REAPED_W, h: REAPED_H, compact: true, lanes: [], lanesY: 0, memY: 0, mem: null, memOpen: false, blackboxY: null, consoleY: 0 };
   }
@@ -438,16 +439,19 @@ function placeCables(boxes: Map<number, BoxLayout>, pipes: PipeLayout[]): CableL
 }
 
 // Origen de una señal ya entregada: el envío más reciente con esa señal y ese destino.
-function sourceOf(trace: Trace, t: number, signal: string, to: number): SignalSource {
+function sourceOf(trace: LoadedTrace, t: number, signal: string, to: number): SignalSource {
+  const send = flag('signalSend');
   for (let s = t; s >= 0; s--) {
-    for (const ev of trace.steps[s].events) {
+    // Solo se abren los pasos que enviaron alguna señal.
+    if ((trace.columns.flags[s] & send) === 0) continue;
+    for (const ev of trace.step(s).events) {
       if (ev.type === 'signalSend' && ev.signal === signal && ev.to === to) return ev.from;
     }
   }
   return { kind: 'kernel', cause: 'fault' };
 }
 
-function placeSignals(trace: Trace, step: Step, boxes: Map<number, BoxLayout>, top: number): SignalLayout[] {
+function placeSignals(trace: LoadedTrace, step: Step, boxes: Map<number, BoxLayout>, top: number): SignalLayout[] {
   const items = new Map<string, { signal: string; source: SignalSource; to: number; status: SignalLayout['status'] }>();
   const keyOf = (signal: string, source: SignalSource, to: number) =>
     `${signal}:${source.kind}:${'pid' in source ? source.pid : ''}:${to}`;
@@ -502,8 +506,8 @@ function placeSignals(trace: Trace, step: Step, boxes: Map<number, BoxLayout>, t
   return out;
 }
 
-export function layoutScene(trace: Trace, t: number, opts: SceneOptions, index: TraceIndex = indexTrace(trace)): SceneLayout {
-  const step = trace.steps[t];
+export function layoutScene(trace: LoadedTrace, t: number, opts: SceneOptions, index: TraceIndex = indexTrace(trace)): SceneLayout {
+  const step = trace.step(t);
   const sizes = new Map<number, Sized>();
   for (const p of step.processes) sizes.set(p.pid, boxSize(trace, index, step, p, opts));
   const pos = placeTree(step.processes, sizes, index);

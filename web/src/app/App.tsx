@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Contrast, GraduationCap, Moon, Pencil, Play, Sun, LoaderCircle, TriangleAlert, CircleX } from 'lucide-react';
+import { Contrast, GraduationCap, Moon, Pencil, Play, Sun, LoaderCircle, TriangleAlert, CircleX, Square } from 'lucide-react';
 import { CodePanel, type CodeMarks } from '../editor/CodePanel.tsx';
 import { Canvas } from '../player/Canvas.tsx';
 import { Controls } from '../player/Controls.tsx';
@@ -8,9 +8,11 @@ import { usePlayer, usePlayerKeys } from '../player/usePlayer.ts';
 import { threadInk } from '../player/SceneContext.tsx';
 import { catalog } from '../trace/catalog.ts';
 import { describeStep } from '../trace/describe.ts';
-import { indexTrace, threadAt, threadLabel } from '../trace/query.ts';
-import type { Diagnostic, TaskRef, Trace } from '../trace/types.ts';
-import { runProgram, serverAvailable } from './api.ts';
+import { fmt } from '../trace/format.ts';
+import type { LoadedTrace } from '../trace/loaded.ts';
+import { actorsUpTo, indexTrace, threadAt, threadLabel } from '../trace/query.ts';
+import type { Diagnostic, TaskRef } from '../trace/types.ts';
+import { runProgram, serverAvailable, stopRun } from './api.ts';
 import { blankProgram, examples } from './examples.ts';
 import { Intro } from '../intro/Intro.tsx';
 import { StdinPanel } from './StdinPanel.tsx';
@@ -32,11 +34,6 @@ function firstVisit(): boolean {
 
 const newSeed = () => Math.floor(Math.random() * 1_000_000);
 
-// Quién avanzó en cada paso hasta t (los pasos del kernel no cuentan).
-function actorsUpTo(trace: Trace, t: number): TaskRef[] {
-  return trace.steps.slice(1, t + 1).flatMap((s) => (s.actor ? [s.actor] : []));
-}
-
 interface Doc {
   source: string;
   stdin: string;
@@ -49,7 +46,7 @@ interface Doc {
 }
 
 interface Loaded {
-  trace: Trace;
+  trace: LoadedTrace;
   key: number;
   initialT: number;
   recorded?: string; // id de una traza grabada de la galería
@@ -81,14 +78,17 @@ function Workspace({ initial }: { initial: UrlState }) {
   const [mode, setMode] = useState<'edit' | 'view'>('edit');
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [running, setRunning] = useState(false);
+  // Pasos recorridos por la ejecución en curso, y su id para detenerla.
+  const [progress, setProgress] = useState<number | null>(null);
+  const runId = useRef<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const keyRef = useRef(0);
   const started = useRef(false);
 
-  const show = useCallback((trace: Trace, initialT: number, recorded?: string) => {
+  const show = useCallback((trace: LoadedTrace, initialT: number, recorded?: string) => {
     keyRef.current += 1;
-    setLoaded({ trace, key: keyRef.current, initialT: Math.min(initialT, Math.max(0, trace.steps.length - 1)), recorded });
+    setLoaded({ trace, key: keyRef.current, initialT: Math.min(initialT, Math.max(0, trace.last)), recorded });
     setDiagnostics(trace.compile.diagnostics);
     setMode('view');
   }, []);
@@ -115,6 +115,8 @@ function Workspace({ initial }: { initial: UrlState }) {
         return;
       }
       setRunning(true);
+      setProgress(null);
+      runId.current = null;
       try {
         const injections = (d.ctrlc ?? []).map((t) => ({ t, signal: 'SIGINT' }));
         const trace = await runProgram({
@@ -125,8 +127,11 @@ function Workspace({ initial }: { initial: UrlState }) {
           policy: d.policy ?? 'round_robin',
           seed: d.seed ?? 0,
           schedule: d.policy === 'manual' ? d.schedule : undefined,
+        }, {
+          onStart: (id) => (runId.current = id),
+          onProgress: setProgress,
         });
-        if (trace.outcome.kind === 'compileError' || trace.steps.length === 0) {
+        if (trace.outcome.kind === 'compileError' || trace.length === 0) {
           setDiagnostics(trace.compile.diagnostics);
           setMode('edit');
         } else {
@@ -136,6 +141,8 @@ function Workspace({ initial }: { initial: UrlState }) {
         setRunError(`No se pudo ejecutar: ${(e as Error).message}`);
       } finally {
         setRunning(false);
+        setProgress(null);
+        runId.current = null;
       }
     },
     [server, loadRecorded, show],
@@ -175,6 +182,10 @@ function Workspace({ initial }: { initial: UrlState }) {
     mode,
     server,
     running,
+    progress,
+    onStop: () => {
+      if (runId.current) stopRun(runId.current);
+    },
     runError,
     diagnostics,
     stale,
@@ -250,6 +261,8 @@ interface Shared {
   mode: 'edit' | 'view';
   server: Server;
   running: boolean;
+  progress: number | null;
+  onStop: () => void;
   runError: string | null;
   diagnostics: Diagnostic[];
   stale: boolean;
@@ -273,7 +286,7 @@ function WithTrace(props: Shared & { loaded: Loaded }) {
   const player = usePlayer(trace, loaded.initialT);
   usePlayerKeys(player);
   const t = player.t;
-  const step = trace.steps[t];
+  const step = trace.step(t);
 
   useEffect(() => {
     const run = trace.run;
@@ -334,7 +347,13 @@ function WithTrace(props: Shared & { loaded: Loaded }) {
       stage={
         <>
           <Canvas trace={trace} index={index} player={player} onChoose={props.onChoose && trace.run.policy === 'manual' && !props.running ? (chosen) => props.onChoose!(t, actorsUpTo(trace, t), chosen) : undefined} />
-          {props.stale && mode === 'edit' && <div className="stage-note">Estás viendo la ejecución anterior. Presiona Ejecutar para ver tus cambios.</div>}
+          {props.running ? (
+            <div className="stage-note">
+              <RunProgress progress={props.progress} onStop={props.onStop} />
+            </div>
+          ) : (
+            props.stale && mode === 'edit' && <div className="stage-note">Estás viendo la ejecución anterior. Presiona Ejecutar para ver tus cambios.</div>
+          )}
         </>
       }
       footer={
@@ -367,9 +386,7 @@ function WithoutTrace(props: Shared) {
       stage={
         <div className="stage-empty">
           {props.running ? (
-            <p>
-              <LoaderCircle className="spin" size={18} /> Compilando y ejecutando…
-            </p>
+            <RunProgress progress={props.progress} onStop={props.onStop} />
           ) : props.server === 'offline' ? (
             <p>No hay servidor local: inicia la aplicación con ./pss o docker compose up para ejecutar programas. Mientras tanto puedes abrir las trazas grabadas de la galería.</p>
           ) : (
@@ -379,6 +396,21 @@ function WithoutTrace(props: Shared) {
       }
       footer={null}
     />
+  );
+}
+
+// Mientras corre: cuántos pasos lleva y cómo detenerla (se ve lo recorrido hasta ahí).
+function RunProgress({ progress, onStop }: { progress: number | null; onStop: () => void }) {
+  return (
+    <div className="run-progress" role="status">
+      <LoaderCircle className="spin" size={18} />
+      <span>{progress === null ? 'Compilando y ejecutando…' : `Ejecutando: ${fmt(progress)} pasos`}</span>
+      {progress !== null && (
+        <button type="button" className="ghost small" onClick={onStop} title="Detener y ver lo ejecutado hasta ahora">
+          <Square size={13} /> Detener
+        </button>
+      )}
+    </div>
   );
 }
 

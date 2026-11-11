@@ -1,7 +1,7 @@
 // Estado de reproducción: paso actual, animación en curso y controles. Toda la interfaz se deriva de t.
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { nextEventStep, nextThreadStep, prevEventStep, runToLine } from '../trace/query.ts';
-import type { Trace } from '../trace/types.ts';
+import type { LoadedTrace } from '../trace/loaded.ts';
 
 export interface Anim {
   step: number; // paso cuyos eventos se animan
@@ -45,8 +45,8 @@ export interface Player {
   setHover: (t: number | null, line: number | null) => void;
 }
 
-export function usePlayer(trace: Trace, initialT = 0): Player {
-  const last = trace.steps.length - 1;
+export function usePlayer(trace: LoadedTrace, initialT = 0): Player {
+  const last = trace.last;
   const [t, setT] = useState(() => Math.min(Math.max(0, initialT), last));
   const [anim, setAnim] = useState<Anim | null>(null);
   const [progress, setProgress] = useState(1);
@@ -134,7 +134,7 @@ export function usePlayer(trace: Trace, initialT = 0): Player {
       nextEvent: () => goto(nextEventStep(trace, tRef.current)),
       prevEvent: () => goto(prevEventStep(trace, tRef.current)),
       threadStep: () => {
-        const tid = selectedTid ?? trace.steps[tRef.current].actor?.tid;
+        const tid = selectedTid ?? trace.step(tRef.current).actor?.tid;
         if (tid !== undefined) goto(nextThreadStep(trace, tRef.current, tid));
       },
       toLine: (line: number) => goto(runToLine(trace, tRef.current, line)),

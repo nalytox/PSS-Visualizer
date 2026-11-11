@@ -1,11 +1,12 @@
 # Límites de ejecución (sección 13 del spec).
-# Valores iniciales: se ajustarán tras las primeras pruebas con programas reales del curso.
+# Una ejecución puede llegar a un millón de pasos: la interfaz muestra el avance y permite
+# detenerla antes. El tiempo es una red de seguridad para programas que no avanzan.
 
 [limits]
 max_processes = 32
 max_threads_per_process = 16
-max_steps = 5000
-wall_time_ms = 10000
+max_steps = 1000000
+wall_time_ms = 600000          # 10 min
 memory_bytes = 268435456          # 256 MiB
 output_bytes_per_process = 65536  # 64 KiB
-trace_bytes_compressed = 20971520 # 20 MiB
+trace_bytes_compressed = 134217728 # 128 MiB

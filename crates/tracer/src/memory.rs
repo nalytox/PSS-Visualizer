@@ -5,6 +5,7 @@ use crate::arch::{self, Regs};
 use crate::dwarf::{DebugInfo, Loc, TypeId, TypeKind, VarDecl};
 use crate::heap::Heap;
 use crate::process::{Mapping, Tracee};
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use trace_model::{Frame, HeapBlock, MemorySnapshot, Scalar, Value, Var};
 
@@ -15,6 +16,8 @@ pub const POISON: u8 = 0xBE;
 const MAX_ITEMS: u64 = 64;
 const MAX_DEPTH: usize = 8;
 const MAX_STRING: usize = 64;
+/// Una instantánea lee la memoria de a páginas: una llamada por página y no una por variable.
+const PAGE: u64 = 4096;
 
 pub fn hex(a: u64) -> String {
     format!("{a:#x}")
@@ -101,6 +104,8 @@ pub struct Reader<'a> {
     fn_names: HashMap<u64, String>,
     /// Pilas de los hilos (mapeos anónimos): cuentan como stack y no como memoria ajena.
     stacks: Vec<(u64, u64)>,
+    /// Páginas ya leídas (None = no legible). El proceso está detenido mientras dura el Reader.
+    pages: RefCell<HashMap<u64, Option<Box<[u8]>>>>,
 }
 
 impl<'a> Reader<'a> {
@@ -121,6 +126,7 @@ impl<'a> Reader<'a> {
             pointers: Vec::new(),
             fn_names,
             stacks: Vec::new(),
+            pages: RefCell::new(HashMap::new()),
         }
     }
 
@@ -267,8 +273,26 @@ impl<'a> Reader<'a> {
     fn read(&self, addr: u64, len: usize) -> Option<Vec<u8>> {
         match self.heap.freed_bytes(addr, len) {
             Some(b) => Some(b.to_vec()),
-            None => self.tracee.read(addr, len),
+            None => self.read_pages(addr, len),
         }
+    }
+
+    fn read_pages(&self, addr: u64, len: usize) -> Option<Vec<u8>> {
+        let end = addr.checked_add(len as u64)?;
+        let mut out = Vec::with_capacity(len);
+        let mut pages = self.pages.borrow_mut();
+        let mut base = addr - addr % PAGE;
+        while base < end {
+            let page = pages
+                .entry(base)
+                .or_insert_with(|| self.tracee.read(base, PAGE as usize).map(Vec::into_boxed_slice))
+                .as_ref()?;
+            let from = addr.max(base) - base;
+            let to = end.min(base + PAGE) - base;
+            out.extend_from_slice(&page[from as usize..to as usize]);
+            base += PAGE;
+        }
+        Some(out)
     }
 
     /// Devuelve el valor y si está sin inicializar.

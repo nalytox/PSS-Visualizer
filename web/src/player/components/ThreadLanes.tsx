@@ -51,14 +51,14 @@ export function ThreadLanes({ box, animate }: { box: BoxLayout; animate: boolean
   const label = (tid: number) => threadLabel(index, tid);
   const laneOf = new Map(box.lanes.map((tid, i) => [tid, i]));
 
-  const stateAt = (s: number, tid: number): Thread | undefined => threadAt(trace.steps[s], pid, tid);
+  const stateAt = (s: number, tid: number): Thread | undefined => threadAt(trace.step(s), pid, tid);
   const yAt = (s: number, tid: number, i: number) => laneY(i) - (stateAt(s, tid)?.inHandler ? HANDLER_LIFT : 0);
 
   const clipId = `lanes-clip-${pid}`;
   const lanesTop = box.lanesY + 6;
   const lanesBottom = laneY(box.lanes.length - 1) + LANE_H / 2;
   const nowX = x0 + (t - t0) * COL_W + COL_W / 2;
-  const current = trace.steps[t];
+  const current = trace.step(t);
   const syncNames = new Map(current.sync.flatMap((o) => (o.name ? [[o.id, o.name] as [string, string]] : [])));
 
   return (
@@ -153,7 +153,7 @@ function LaneHistory(props: {
   for (const s of range) {
     const th = stateAt(s, tid);
     const prev = s > 0 ? stateAt(s - 1, tid) : undefined;
-    const step = trace.steps[s];
+    const step = trace.step(s);
     const y = yAt(s, tid, i);
     if (!th) continue;
 

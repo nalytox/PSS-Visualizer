@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pss-visualizer/compact.schema.json",
+  "title": "CompactTrace",
+  "description": "Traza compacta (versión 2) para ejecuciones largas. Los campos que no son pasos ni instantáneas son los mismos de trace.schema.json; los pasos van en bloques comprimidos. Ver schema/README.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "arch",
+    "source",
+    "stdin",
+    "run",
+    "compile",
+    "outcome",
+    "truncated",
+    "output",
+    "summary",
+    "stepCount",
+    "index",
+    "chunks"
+  ],
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "arch": {
+      "enum": [
+        "x86_64",
+        "aarch64"
+      ]
+    },
+    "source": {
+      "type": "string"
+    },
+    "stdin": {
+      "type": "string"
+    },
+    "run": {
+      "description": "Igual que en trace.schema.json.",
+      "type": "object",
+      "tsType": "import('./types.ts').Trace['run']"
+    },
+    "compile": {
+      "description": "Igual que en trace.schema.json.",
+      "type": "object",
+      "tsType": "import('./types.ts').Trace['compile']"
+    },
+    "outcome": {
+      "description": "Igual que en trace.schema.json.",
+      "type": "object",
+      "tsType": "import('./types.ts').Trace['outcome']"
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "truncatedReason": {
+      "description": "Igual que en trace.schema.json.",
+      "type": "string",
+      "tsType": "import('./types.ts').Trace['truncatedReason']"
+    },
+    "output": {
+      "description": "Igual que en trace.schema.json.",
+      "type": "array",
+      "tsType": "import('./types.ts').Trace['output']"
+    },
+    "summary": {
+      "description": "Igual que en trace.schema.json.",
+      "type": "object",
+      "tsType": "import('./types.ts').Trace['summary']"
+    },
+    "stepCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "index": {
+      "$ref": "#/$defs/StepIndex"
+    },
+    "chunks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Chunk"
+      }
+    }
+  },
+  "$defs": {
+    "Column": {
+      "title": "Column",
+      "description": "stepCount enteros sin signo de 32 bits, little-endian, comprimidos con gzip y en base64.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+    },
+    "StepIndex": {
+      "title": "StepIndex",
+      "description": "Lo que la línea de tiempo y la navegación necesitan de cada paso, sin abrir bloques.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actorPid",
+        "actorTid",
+        "actorLine",
+        "flags",
+        "pids",
+        "threads",
+        "forks",
+        "mutexes"
+      ],
+      "properties": {
+        "actorPid": {
+          "description": "PID del actor de cada paso; 0 si no hubo actor.",
+          "$ref": "#/$defs/Column"
+        },
+        "actorTid": {
+          "description": "TID del actor de cada paso; 0 si no hubo actor.",
+          "$ref": "#/$defs/Column"
+        },
+        "actorLine": {
+          "description": "Próxima línea del actor al terminar el paso; 0 si no tiene.",
+          "$ref": "#/$defs/Column"
+        },
+        "flags": {
+          "description": "Un bit por clase de evento del paso, en este orden: call, return, fork, threadCreate, exec, exitProcess, exitThread, wait, waitReaped, join, reparent, pipe, dup, close, read, write, writePipe, block, unblock, signalSend, signalDeliver, signalReturn, mutex, mutexAcquired, mutexReleased, cond, sem, malloc, free, memError, deadlock, other (stdinNeeded y truncated).",
+          "$ref": "#/$defs/Column"
+        },
+        "pids": {
+          "description": "Procesos en orden de aparición.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "threads": {
+          "description": "Hilos en orden de aparición.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pid",
+              "tid"
+            ],
+            "properties": {
+              "pid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tid": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "forks": {
+          "description": "Cada fork, en orden.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "parent",
+              "child"
+            ],
+            "properties": {
+              "parent": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "child": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "mutexes": {
+          "description": "Mutex en orden de aparición.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Chunk": {
+      "title": "Chunk",
+      "description": "Bloque de pasos consecutivos. data es {\"steps\": [...], \"snapshots\": {...}} con gzip y en base64: el primer paso completo y los siguientes como parches del anterior (con events vacío); cada instantánea completa o como {\"$from\": id, \"$p\": parche} de otra del mismo bloque.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "count",
+        "firstSnapshot",
+        "data"
+      ],
+      "properties": {
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "firstSnapshot": {
+          "description": "Las instantáneas del bloque son m{firstSnapshot} en adelante.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "data": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        }
+      }
+    }
+  }
+}

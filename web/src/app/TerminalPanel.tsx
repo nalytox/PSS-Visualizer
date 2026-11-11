@@ -1,7 +1,7 @@
 // Consola global: todo lo que llegó a la terminal hasta el paso actual, con el color de cada proceso.
 import { decodeBytes } from '../trace/bytes.ts';
 import { outputUpTo, type TraceIndex } from '../trace/query.ts';
-import type { Trace } from '../trace/types.ts';
+import type { LoadedTrace } from '../trace/loaded.ts';
 import { inkOf } from '../player/SceneContext.tsx';
 
 interface Line {
@@ -11,7 +11,7 @@ interface Line {
   t: number;
 }
 
-export function terminalLines(trace: Trace, t: number): Line[] {
+export function terminalLines(trace: LoadedTrace, t: number): Line[] {
   const lines: Line[] = [];
   const open = new Map<number, Line>();
   for (const c of outputUpTo(trace, t)) {
@@ -29,7 +29,7 @@ export function terminalLines(trace: Trace, t: number): Line[] {
   return lines;
 }
 
-export function TerminalPanel({ trace, index, t }: { trace: Trace; index: TraceIndex; t: number }) {
+export function TerminalPanel({ trace, index, t }: { trace: LoadedTrace; index: TraceIndex; t: number }) {
   const lines = terminalLines(trace, t);
   return (
     <section className="panel terminal" aria-label="Terminal">

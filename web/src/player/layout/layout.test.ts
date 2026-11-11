@@ -3,12 +3,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describeStep } from '../../trace/describe.ts';
 import { indexTrace, nextEventStep, nextThreadStep, runToLine } from '../../trace/query.ts';
-import type { MemorySnapshot, Trace } from '../../trace/types.ts';
+import { loadTrace, type LoadedTrace } from '../../trace/loaded.ts';
+import type { MemorySnapshot, Step, Trace } from '../../trace/types.ts';
 import { layoutMemory, resolvePointer } from './memoryLayout.ts';
 import { layoutScene } from './sceneLayout.ts';
 
 const root = fileURLToPath(new URL('../../../../traces/synthetic/', import.meta.url));
-const load = (name: string) => JSON.parse(readFileSync(root + name + '.json', 'utf8')) as Trace;
+const load = (name: string) => loadTrace(JSON.parse(readFileSync(root + name + '.json', 'utf8')) as Trace);
+const steps = (trace: LoadedTrace) => Array.from({ length: trace.length }, (_, t) => trace.step(t));
 const all = readdirSync(root)
   .filter((f) => f.endsWith('.json'))
   .map((f) => f.replace(/\.json$/, ''));
@@ -39,8 +41,8 @@ describe('resolvePointer', () => {
 
 describe('layoutMemory', () => {
   const trace = load('structs_heap');
-  const last = trace.steps.at(-2)!;
-  const snap = trace.snapshots[last.processes[0].mem!] as MemorySnapshot;
+  const last = trace.step(trace.length - 2);
+  const snap = trace.snapshot(last.processes[0].mem!) as MemorySnapshot;
   const mem = layoutMemory(snap, [{ tid: 1000, title: '', ink: 'x' }]);
 
   it('dibuja la lista enlazada de izquierda a derecha siguiendo las flechas', () => {
@@ -69,14 +71,14 @@ describe.each(all)('layoutScene · %s', (name) => {
   const index = indexTrace(trace);
 
   it('es determinista', () => {
-    const t = Math.floor(trace.steps.length / 2);
+    const t = Math.floor(trace.length / 2);
     expect(JSON.stringify(serializable(layoutScene(trace, t, opts, index)))).toBe(
       JSON.stringify(serializable(layoutScene(trace, t, opts, indexTrace(trace)))),
     );
   });
 
   it('los cuadrados nunca se superponen y cada pipe tiene tubo y cables', () => {
-    trace.steps.forEach((step, t) => {
+    steps(trace).forEach((step, t) => {
       const scene = layoutScene(trace, t, opts, index);
       const boxes = [...scene.boxes.values()];
       for (let i = 0; i < boxes.length; i++) {
@@ -94,7 +96,7 @@ describe.each(all)('layoutScene · %s', (name) => {
   });
 
   it('cada paso tiene una explicación', () => {
-    trace.steps.forEach((_, t) => expect(describeStep(trace, index, t).length, `t=${t}`).toBeGreaterThan(0));
+    steps(trace).forEach((_, t) => expect(describeStep(trace, index, t).length, `t=${t}`).toBeGreaterThan(0));
   });
 });
 
@@ -103,20 +105,20 @@ describe('navegación', () => {
 
   it('siguiente evento salta el paso sin eventos', () => {
     // t=3 es un paso de línea común; t=5 cierra un fd.
-    expect(trace.steps[3].events).toEqual([]);
+    expect(trace.step(3).events).toEqual([]);
     expect(nextEventStep(trace, 2)).toBe(5);
   });
 
   it('paso del hilo avanza hasta el próximo paso de ese hilo', () => {
     const s = nextThreadStep(trace, 2, 1001);
-    expect(trace.steps[s].actor?.tid).toBe(1001);
+    expect(trace.step(s).actor?.tid).toBe(1001);
     expect(s).toBe(3);
   });
 
   it('ejecutar hasta una línea se detiene cuando un hilo queda en ella', () => {
     const s = runToLine(trace, 0, 22);
-    const actor = trace.steps[s].actor!;
-    const th = trace.steps[s].processes.find((p) => p.pid === actor.pid)!.threads[0];
+    const actor = trace.step(s).actor!;
+    const th = trace.step(s).processes.find((p) => p.pid === actor.pid)!.threads[0];
     expect(th.line).toBe(22);
   });
 });
@@ -137,8 +139,8 @@ describe('resolvePointer con tipo', () => {
 
 describe('procesos (trazas reales de la fase 2)', () => {
   const refs = fileURLToPath(new URL('../../../../traces/reference/', import.meta.url));
-  const real = (name: string) => JSON.parse(readFileSync(refs + name + '.json', 'utf8')) as Trace;
-  const stepWhere = (trace: Trace, pred: (s: Trace['steps'][number]) => boolean) => trace.steps.findIndex(pred);
+  const real = (name: string) => loadTrace(JSON.parse(readFileSync(refs + name + '.json', 'utf8')) as Trace);
+  const stepWhere = (trace: LoadedTrace, pred: (s: Step) => boolean) => steps(trace).findIndex(pred);
 
   it('el padre bloqueado en wait queda unido a su hijo con la línea de espera', () => {
     const trace = real('03_fork_simple');
@@ -170,7 +172,7 @@ describe('procesos (trazas reales de la fase 2)', () => {
     const trace = real('04_fork_bucle');
     const t = stepWhere(trace, (s) => s.events.some((e) => e.type === 'reparent'));
     const scene = layoutScene(trace, t, opts);
-    const orphans = trace.steps[t].processes.filter((p) => p.ppid === 1 && p.state !== 'reaped').map((p) => p.pid);
+    const orphans = trace.step(t).processes.filter((p) => p.ppid === 1 && p.state !== 'reaped').map((p) => p.pid);
     expect(scene.init).not.toBeNull();
     expect(scene.init!.edges.map((e) => e.pid).sort()).toEqual(orphans.sort());
     expect(layoutScene(trace, 0, opts).init).toBeNull();
@@ -178,7 +180,7 @@ describe('procesos (trazas reales de la fase 2)', () => {
 
   it('los 8 procesos de fork en un bucle no se superponen', () => {
     const trace = real('04_fork_bucle');
-    const boxes = [...layoutScene(trace, trace.steps.length - 2, opts).boxes.values()];
+    const boxes = [...layoutScene(trace, trace.length - 2, opts).boxes.values()];
     expect(boxes).toHaveLength(8);
     for (const a of boxes)
       for (const b of boxes) {

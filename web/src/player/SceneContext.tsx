@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { TraceIndex } from '../trace/query.ts';
-import type { Trace } from '../trace/types.ts';
+import type { LoadedTrace } from '../trace/loaded.ts';
 import type { Player } from './usePlayer.ts';
 
 export interface Tip {
@@ -9,7 +9,7 @@ export interface Tip {
 }
 
 export interface SceneCtx {
-  trace: Trace;
+  trace: LoadedTrace;
   index: TraceIndex;
   player: Player;
   showTip: (tip: Tip, el: Element) => void;

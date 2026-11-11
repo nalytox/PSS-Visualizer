@@ -1966,3 +1966,16 @@ button.run:hover:not(:disabled) {
   margin-left: auto;
 }
 
+
+/* Ejecución en curso: pasos recorridos y Detener */
+.run-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-note .run-progress button {
+  padding: 2px 10px;
+}

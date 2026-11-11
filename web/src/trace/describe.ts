@@ -1,7 +1,8 @@
 // Frases en lenguaje cercano que explican qué pasó en cada paso. El detalle técnico va en tooltips.
 import { visible } from './bytes.ts';
 import { processAt, threadAt, threadLabel, type TraceIndex } from './query.ts';
-import type { BlockReason, Event, Fd, Step, Trace, Value } from './types.ts';
+import type { BlockReason, Event, Fd, Step, Value } from './types.ts';
+import type { LoadedTrace } from './loaded.ts';
 
 function valueText(v: Value | undefined): string {
   if (!v) return '';
@@ -194,9 +195,9 @@ function eventText(index: TraceIndex, step: Step, prev: Step | undefined, ev: Ev
   }
 }
 
-export function describeStep(trace: Trace, index: TraceIndex, t: number): string[] {
-  const step = trace.steps[t];
-  const prev = trace.steps[t - 1];
+export function describeStep(trace: LoadedTrace, index: TraceIndex, t: number): string[] {
+  const step = trace.step(t);
+  const prev = trace.step(t - 1);
   if (t === 0) {
     const main = step.processes[0]?.threads[0];
     return [`Estado inicial: el programa está por ejecutar la línea ${main?.line ?? '?'} de main.`];

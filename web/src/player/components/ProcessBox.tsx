@@ -47,7 +47,7 @@ export function ProcessBox(props: { box: BoxLayout; proc: Process; bornFrom?: { 
   const ctx = useScene();
   const { trace, index, player } = ctx;
   const t = player.t;
-  const step = trace.steps[t];
+  const step = trace.step(t);
   const ink = inkOf(index, proc.pid);
   const fill = fillOf(index, proc.pid);
   const transition = { duration: animate ? 0.35 : 0, ease: EASE };
@@ -64,7 +64,7 @@ export function ProcessBox(props: { box: BoxLayout; proc: Process; bornFrom?: { 
 
   // Vista previa: al pasar sobre un nodo de carril se muestra la memoria de ese instante.
   const memT = player.hoverT ?? t;
-  const memProc = processAt(trace.steps[memT], proc.pid) ?? proc;
+  const memProc = processAt(trace.step(memT), proc.pid) ?? proc;
   const stacks = memProc.threads.map((th) => ({
     tid: th.tid,
     title: memProc.threads.length > 1 ? `hilo ${threadLabel(index, th.tid)}` : '',
@@ -78,7 +78,7 @@ export function ProcessBox(props: { box: BoxLayout; proc: Process; bornFrom?: { 
   }, [box.mem, box.memOpen, memT, t, memProc.mem, trace]);
   const prevValues = useMemo(() => {
     if (!box.memOpen || memT === 0) return null;
-    const prevProc = processAt(trace.steps[memT - 1], proc.pid);
+    const prevProc = processAt(trace.step(memT - 1), proc.pid);
     if (!prevProc || prevProc.mem === memProc.mem) return memLayout?.values ?? null;
     const snap = snapshotOf(trace, prevProc);
     return snap ? layoutMemory(snap, stacks).values : null;
@@ -297,7 +297,7 @@ function Port({ port, box, pid, ink }: { port: PortLayout; box: BoxLayout; pid: 
   const x = port.side === 'right' ? lx - PORT_W / 2 : lx - PORT_W / 2;
   const label = portLabel(port.fd, port.entry);
   const std = STD_NAMES[port.fd];
-  const warning = ctx.trace.steps[ctx.player.t].pipes.some((p) => p.warnings.some((w) => w.pid === pid && w.fd === port.fd));
+  const warning = ctx.trace.step(ctx.player.t).pipes.some((p) => p.warnings.some((w) => w.pid === pid && w.fd === port.fd));
   return (
     <g
       className={`port${port.entry.kind === 'pipe' ? ' pipe-port' : ''}${warning ? ' warning' : ''}`}

@@ -7,7 +7,7 @@ help:
 	@echo "make test     pruebas de Rust y de la interfaz (sin navegador)"
 	@echo "make e2e      pruebas de extremo a extremo con Playwright"
 	@echo "make synth    regenera traces/synthetic desde tools/synth"
-	@echo "make types    regenera web/src/trace/types.ts desde el esquema"
+	@echo "make types    regenera los tipos de web/src/trace desde los esquemas"
 	@echo "make docker   construye la imagen local"
 
 run:

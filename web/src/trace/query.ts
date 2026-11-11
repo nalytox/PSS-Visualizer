@@ -1,5 +1,6 @@
 // Consultas sobre la traza. Todo se deriva del paso actual; nada de esto muta la traza.
-import type { Event, MemorySnapshot, Process, Step, Thread, Trace } from './types.ts';
+import { flag, type Flag, type LoadedTrace } from './loaded.ts';
+import type { MemorySnapshot, Process, Step, TaskRef, Thread } from './types.ts';
 
 export const PROC_HUES = 8;
 
@@ -11,9 +12,9 @@ export function threadAt(step: Step, pid: number, tid: number): Thread | undefin
   return processAt(step, pid)?.threads.find((th) => th.tid === tid);
 }
 
-export function snapshotOf(trace: Trace, proc: Process | undefined): MemorySnapshot | null {
+export function snapshotOf(trace: LoadedTrace, proc: Process | undefined): MemorySnapshot | null {
   if (!proc || proc.mem === null) return null;
-  return trace.snapshots[proc.mem] ?? null;
+  return trace.snapshot(proc.mem);
 }
 
 export interface TraceIndex {
@@ -27,25 +28,22 @@ export interface TraceIndex {
   lines: string[];
 }
 
-export function indexTrace(trace: Trace): TraceIndex {
+export function indexTrace(trace: LoadedTrace): TraceIndex {
   const hue = new Map<number, number>();
   const parent = new Map<number, number>();
   const threadOrder = new Map<number, number>();
   const perProcess = new Map<number, number>();
   const mutexHue = new Map<string, number>();
-  for (const step of trace.steps) {
-    for (const p of step.processes) {
-      if (!hue.has(p.pid)) hue.set(p.pid, hue.size % PROC_HUES);
-      for (const th of p.threads) {
-        if (threadOrder.has(th.tid)) continue;
-        const n = perProcess.get(p.pid) ?? 0;
-        threadOrder.set(th.tid, n);
-        perProcess.set(p.pid, n + 1);
-      }
-    }
-    for (const ev of step.events) if (ev.type === 'fork') parent.set(ev.child, ev.parent);
-    for (const s of step.sync) if (s.kind === 'mutex' && !mutexHue.has(s.id)) mutexHue.set(s.id, mutexHue.size % 4);
+  const seen = trace.appearance;
+  for (const pid of seen.pids) if (!hue.has(pid)) hue.set(pid, hue.size % PROC_HUES);
+  for (const { pid, tid } of seen.threads) {
+    if (threadOrder.has(tid)) continue;
+    const n = perProcess.get(pid) ?? 0;
+    threadOrder.set(tid, n);
+    perProcess.set(pid, n + 1);
   }
+  for (const f of seen.forks) parent.set(f.child, f.parent);
+  for (const id of seen.mutexes) if (!mutexHue.has(id)) mutexHue.set(id, mutexHue.size % 4);
   return { hue, parent, threadOrder, mutexHue, lines: trace.source.split('\n') };
 }
 
@@ -63,38 +61,47 @@ export function excerpt(index: TraceIndex, line: number | null | undefined, max 
 
 // ---------- navegación ----------
 
-const QUIET: Event['type'][] = ['call', 'return'];
+// Todo evento cuenta salvo las llamadas y retornos, que ocurren en casi cada paso.
+const QUIET = flag('call') | flag('return');
 
-export function isNotable(ev: Event): boolean {
-  return !QUIET.includes(ev.type);
+export function hasFlag(trace: LoadedTrace, t: number, name: Flag): boolean {
+  return (trace.columns.flags[t] & flag(name)) !== 0;
 }
 
-export function nextEventStep(trace: Trace, t: number): number {
-  for (let s = t + 1; s < trace.steps.length; s++) if (trace.steps[s].events.some(isNotable)) return s;
-  return trace.steps.length - 1;
+export function nextEventStep(trace: LoadedTrace, t: number): number {
+  const flags = trace.columns.flags;
+  for (let s = t + 1; s < trace.length; s++) if ((flags[s] & ~QUIET) !== 0) return s;
+  return trace.length - 1;
 }
 
-export function prevEventStep(trace: Trace, t: number): number {
-  for (let s = t - 1; s > 0; s--) if (trace.steps[s].events.some(isNotable)) return s;
+export function prevEventStep(trace: LoadedTrace, t: number): number {
+  const flags = trace.columns.flags;
+  for (let s = t - 1; s > 0; s--) if ((flags[s] & ~QUIET) !== 0) return s;
   return 0;
 }
 
-export function nextThreadStep(trace: Trace, t: number, tid: number): number {
-  for (let s = t + 1; s < trace.steps.length; s++) if (trace.steps[s].actor?.tid === tid) return s;
+export function nextThreadStep(trace: LoadedTrace, t: number, tid: number): number {
+  const tids = trace.columns.actorTid;
+  for (let s = t + 1; s < trace.length; s++) if (tids[s] === tid) return s;
   return t;
 }
 
 // Avanza hasta que algún hilo quede detenido en `line` (a punto de ejecutarla).
-export function runToLine(trace: Trace, t: number, line: number): number {
-  for (let s = t + 1; s < trace.steps.length; s++) {
-    const step = trace.steps[s];
-    if (!step.actor) continue;
-    if (threadAt(step, step.actor.pid, step.actor.tid)?.line === line) return s;
-  }
+export function runToLine(trace: LoadedTrace, t: number, line: number): number {
+  const { actorPid, actorLine } = trace.columns;
+  for (let s = t + 1; s < trace.length; s++) if (actorPid[s] !== 0 && actorLine[s] === line) return s;
   return t;
 }
 
-export function outputUpTo(trace: Trace, t: number, pid?: number) {
+// Quién avanzó en cada paso hasta t (los pasos del kernel no cuentan).
+export function actorsUpTo(trace: LoadedTrace, t: number): TaskRef[] {
+  const { actorPid, actorTid } = trace.columns;
+  const out: TaskRef[] = [];
+  for (let s = 1; s <= t && s < trace.length; s++) if (actorPid[s] !== 0) out.push({ pid: actorPid[s], tid: actorTid[s] });
+  return out;
+}
+
+export function outputUpTo(trace: LoadedTrace, t: number, pid?: number) {
   return trace.output.filter((c) => c.t <= t && (pid === undefined || c.pid === pid));
 }
 

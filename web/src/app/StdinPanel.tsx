@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { Keyboard, Send } from 'lucide-react';
 import { visible } from '../trace/bytes.ts';
-import type { Trace } from '../trace/types.ts';
+import type { LoadedTrace } from '../trace/loaded.ts';
 
 interface Props {
   mode: 'edit' | 'view';
   doc: { stdin: string; stdinEof: boolean };
-  trace?: Trace;
+  trace?: LoadedTrace;
   t: number;
   atEnd: boolean;
   busy: boolean;
@@ -44,7 +44,7 @@ export function StdinPanel(props: Props) {
     );
   }
 
-  const state = trace.steps[t].stdin;
+  const state = trace.step(t).stdin;
   const consumed = trace.stdin.slice(0, state.consumed);
   const rest = trace.stdin.slice(state.consumed);
   const waiting = trace.outcome.kind === 'awaitingInput' && props.atEnd;

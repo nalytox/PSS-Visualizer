@@ -16,11 +16,11 @@ impl Default for Limits {
         Limits {
             max_processes: 32,
             max_threads_per_process: 16,
-            max_steps: 5000,
-            wall_time_ms: 10_000,
+            max_steps: 1_000_000,
+            wall_time_ms: 600_000,
             memory_bytes: 256 << 20,
             output_bytes_per_process: 64 << 10,
-            trace_bytes_compressed: 20 << 20,
+            trace_bytes_compressed: 128 << 20,
         }
     }
 }
@@ -75,7 +75,7 @@ mod tests {
     fn parses_the_repository_config() {
         let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../config/limits.toml")).unwrap();
         let l = super::Limits::parse(&text).unwrap();
-        assert_eq!(l.max_steps, 5000);
+        assert_eq!(l.max_steps, 1_000_000);
         assert_eq!(l.memory_bytes, 268435456);
     }
 }

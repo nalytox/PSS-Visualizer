@@ -2,6 +2,7 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Pause, Play, SkipBack, SkipForward, Footprints, Zap, Dices } from 'lucide-react';
 import { threadLabel, type TraceIndex } from '../trace/query.ts';
 import { SPEEDS, type Player } from './usePlayer.ts';
+import { fmt } from '../trace/format.ts';
 
 type PolicyName = 'round_robin' | 'random' | 'manual';
 
@@ -88,7 +89,7 @@ export function Controls(props: {
         </select>
       </label>
       <div className="step-counter" aria-live="off">
-        Paso <strong>{player.t}</strong> de {player.last}
+        Paso <strong>{fmt(player.t)}</strong> de {fmt(player.last)}
       </div>
     </div>
   );

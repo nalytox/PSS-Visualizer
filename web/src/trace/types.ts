@@ -179,7 +179,8 @@ export interface Trace {
   compile: CompileResult;
   outcome: Outcome;
   truncated: boolean;
-  truncatedReason?: 'steps' | 'time' | 'processes' | 'threads' | 'memory' | 'output' | 'traceSize';
+  truncatedReason?:
+    'steps' | 'time' | 'processes' | 'threads' | 'memory' | 'output' | 'traceSize' | 'stopped';
   steps: Step[];
   /**
    * Instantáneas de memoria completas, deduplicadas por contenido. Process.mem apunta aquí.

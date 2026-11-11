@@ -6,11 +6,12 @@ Programación de Sistemas: `fork`, `exec`, `wait`, `pipe`, `dup2`, señales, `pt
 
 Todo corre en tu computador. No se sube código a ningún servidor.
 
-> **Estado: las siete fases del plan.** Compila y traza programas con varios procesos (`fork`, `exec` como caja
+> **Estado: las ocho fases del plan.** Compila y traza programas con varios procesos (`fork`, `exec` como caja
 > negra, `wait`, zombies y huérfanos), pipes con `dup2`, señales (handlers, máscaras, SIGCHLD, alarm
 > y Ctrl+C) e hilos (mutex, variables de condición, semáforos, deadlock y planificación round-robin,
 > aleatoria o manual), con memoria completa y entrada estándar. Incluye el modo introducción con
-> cuatro capítulos animados. Corre en x86_64 y arm64 (aarch64); ver `docs/fases/`.
+> cuatro capítulos animados. Corre en x86_64 y arm64 (aarch64). Una ejecución puede llegar a un
+> millón de pasos: se ve su avance y se puede detener. Ver `docs/fases/`.
 
 ## Cómo ejecutarlo
 
@@ -64,7 +65,7 @@ guarda la traza y el paso actual, así que se puede compartir.
 ## Estructura
 
 ```
-schema/          contrato de la traza (trace.schema.json) y su explicación
+schema/          contrato de la traza (trace.schema.json), la traza compacta (compact.schema.json) y su explicación
 crates/
   trace-model/   tipos Rust del contrato, validados contra el esquema
   tracer/        pss-tracer: compila con gcc, ejecuta bajo ptrace y lee DWARF (gimli)
@@ -76,7 +77,7 @@ web/             interfaz: Vite + React + TypeScript
   src/editor/             panel de código (CodeMirror 6)
   src/intro/              modo introducción: motor determinista y los cuatro capítulos
 tools/synth/     guiones que generan las trazas sintéticas
-traces/          trazas sintéticas (fase 0) y de referencia de cada ejemplo (CI las compara)
+traces/          trazas sintéticas (fase 0), de referencia de cada ejemplo (CI las compara) y compactas de muestra
 config/          límites de ejecución (sección 13)
 examples/        programas de la sección 14 (con su .stdin si leen entrada)
 ```
@@ -88,7 +89,7 @@ make test     # Rust (fmt, clippy, pruebas) + interfaz (tipos, typecheck, vitest
 make e2e      # pruebas de extremo a extremo con Playwright
 make synth    # regenera las trazas sintéticas
 UPDATE_REFERENCE=1 cargo test -p pss-tracer --test examples   # regenera las trazas de referencia
-./target/release/pss-tracer --source prog.c --stdin entrada.txt --out traza.json   # sin interfaz
+./target/release/pss-tracer --source prog.c --stdin entrada.txt --out traza.json   # sin interfaz (traza compacta; --format v1 para la completa)
 make types    # regenera los tipos TS desde el esquema
 cd web && npm run dev   # interfaz con recarga en caliente en http://localhost:5173
 ```

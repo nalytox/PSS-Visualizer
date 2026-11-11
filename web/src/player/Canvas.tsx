@@ -3,7 +3,7 @@ import { AnimatePresence } from 'motion/react';
 import { Maximize, ZoomIn, ZoomOut } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { TraceIndex } from '../trace/query.ts';
-import type { Trace } from '../trace/types.ts';
+import type { LoadedTrace } from '../trace/loaded.ts';
 import { layoutScene } from './layout/sceneLayout.ts';
 import { Cables } from './components/Cables.tsx';
 import { Defs } from './components/Defs.tsx';
@@ -35,7 +35,7 @@ export function Canvas({
   player,
   onChoose,
 }: {
-  trace: Trace;
+  trace: LoadedTrace;
   index: TraceIndex;
   player: Player;
   onChoose?: (task: { pid: number; tid: number }) => void;
@@ -46,14 +46,14 @@ export function Canvas({
   const [tip, setTip] = useState<TipState | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const drag = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
-  const fitted = useRef<Trace | null>(null);
+  const fitted = useRef<LoadedTrace | null>(null);
 
   const t = player.t;
   const scene = useMemo(
     () => layoutScene(trace, t, { memOpen: (pid) => !collapsed.has(pid), inkOf: (pid, tid) => threadInk(index, pid, tid) }, index),
     [trace, t, collapsed, index],
   );
-  const step = trace.steps[t];
+  const step = trace.step(t);
   const animating = !!player.anim && player.progress < 1;
   const smooth = !!player.anim || player.playing;
 
@@ -69,7 +69,7 @@ export function Canvas({
   // Encuadre de toda la ejecución: se muestrea la traza para que el zoom no cambie en cada paso.
   const fullBounds = useMemo(() => {
     const opts = { memOpen: (pid: number) => !collapsed.has(pid), inkOf: (pid: number, tid: number) => threadInk(index, pid, tid) };
-    const last = trace.steps.length - 1;
+    const last = trace.last;
     const samples = [...new Set([0, Math.floor(last / 3), Math.floor((2 * last) / 3), last])];
     return samples
       .map((s) => layoutScene(trace, s, opts, index).bounds)
@@ -186,7 +186,7 @@ export function Canvas({
     [trace, index, player, showTip, hideTip, toggleMem, onChoose],
   );
 
-  const hidden = hiddenCapsules(player.anim ? trace.steps[player.anim.step] : step, player.anim?.dir ?? 1, animating);
+  const hidden = hiddenCapsules(player.anim ? trace.step(player.anim.step) : step, player.anim?.dir ?? 1, animating);
   const forkedFrom = new Map<number, number>();
   for (const ev of step.events) if (ev.type === 'fork') forkedFrom.set(ev.child, ev.parent);
 

@@ -1,6 +1,7 @@
 //! Bloques pedidos por el programa con malloc y compañía. Las asignaciones internas de libc (por
 //! ejemplo el buffer de stdout) no pasan por aquí: solo se registran las llamadas del usuario.
 
+use std::collections::HashSet;
 use trace_model::FreeError;
 
 /// Cuántos pasos sigue visible un bloque liberado (rayado) antes de retirarse del dibujo.
@@ -21,11 +22,15 @@ pub struct Block {
 #[derive(Default, Clone)]
 pub struct Heap {
     pub blocks: Vec<Block>,
+    /// Direcciones liberadas que ya no se dibujan: bastan para reconocer un doble free. Sin esto
+    /// una ejecución larga guardaría para siempre cada bloque liberado con su contenido.
+    freed: HashSet<u64>,
 }
 
 impl Heap {
     pub fn alloc(&mut self, addr: u64, size: u64, t: u64, line: u32) {
         // Un bloque liberado puede volver a entregarse en la misma dirección.
+        self.freed.remove(&addr);
         self.blocks.retain(|b| b.addr != addr);
         self.blocks.push(Block {
             addr,
@@ -35,17 +40,29 @@ impl Heap {
             freed_at: None,
             last_contents: None,
         });
+        self.prune(t);
     }
 
     pub fn free(&mut self, addr: u64, t: u64) -> Result<(), FreeError> {
-        match self.blocks.iter_mut().find(|b| b.addr == addr) {
+        let r = match self.blocks.iter_mut().find(|b| b.addr == addr) {
             Some(b) if b.freed_at.is_none() => {
                 b.freed_at = Some(t);
                 Ok(())
             }
             Some(_) => Err(FreeError::DoubleFree),
+            None if self.freed.contains(&addr) => Err(FreeError::DoubleFree),
             None => Err(FreeError::InvalidPointer),
+        };
+        self.prune(t);
+        r
+    }
+
+    fn prune(&mut self, t: u64) {
+        let gone = |b: &Block| b.freed_at.is_some_and(|f| t.saturating_sub(f) > FREED_VISIBLE_STEPS);
+        for b in self.blocks.iter().filter(|b| gone(b)) {
+            self.freed.insert(b.addr);
         }
+        self.blocks.retain(|b| !gone(b));
     }
 
     /// Guarda el contenido de un bloque vivo justo antes de liberarlo.
@@ -88,6 +105,25 @@ mod tests {
         assert_eq!(h.free(0x2000, 3), Err(FreeError::InvalidPointer));
         h.alloc(0x1000, 32, 4, 6);
         assert_eq!(h.live().count(), 1);
+    }
+
+    #[test]
+    fn old_freed_blocks_are_dropped_but_still_catch_a_double_free() {
+        let mut h = Heap::default();
+        h.alloc(0x1000, 16, 1, 5);
+        h.free(0x1000, 2).unwrap();
+        for t in 3..100 {
+            h.alloc(0x2000 + t * 32, 16, t, 6);
+            h.free(0x2000 + t * 32, t).unwrap();
+        }
+        assert!(
+            h.blocks.len() <= FREED_VISIBLE_STEPS as usize + 1,
+            "{} bloques",
+            h.blocks.len()
+        );
+        assert_eq!(h.free(0x1000, 100), Err(FreeError::DoubleFree));
+        h.alloc(0x1000, 16, 101, 7);
+        assert_eq!(h.free(0x1000, 102), Ok(()));
     }
 
     #[test]

@@ -37,7 +37,7 @@ export function Overlays({ scene }: { scene: SceneLayout }) {
   const { trace, player } = useScene();
   const anim = player.anim;
   if (!anim || player.progress >= 1) return null;
-  const step = trace.steps[anim.step];
+  const step = trace.step(anim.step);
   const p = anim.dir === 1 ? player.progress : 1 - player.progress;
   const items: React.ReactNode[] = [];
   const tubeOf = (id: string): PipeLayout | undefined => scene.pipes.find((x) => x.id === id);

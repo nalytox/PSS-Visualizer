@@ -516,3 +516,94 @@ int main(void) {
     assert!(matches!(t.outcome, Outcome::Exited { code: 0 }), "{:?}", t.outcome);
     assert_eq!(output(&t), [(1000, "1 0\n")]);
 }
+
+#[test]
+fn long_runs_are_written_in_compressed_chunks() {
+    // Miles de pasos en muchos bloques: la traza compacta no guarda la ejecución entera en memoria y su
+    // tamaño crece poco por paso.
+    let opts = Options {
+        source: r#"#include <stdio.h>
+int main(void) {
+    int v[8] = {0};
+    for (int i = 0; i < 6000; i++)
+        v[i % 8] += i;
+    printf("%d\n", v[7]);
+    return 0;
+}
+"#
+        .into(),
+        stdin: vec![],
+        stdin_eof: true,
+        limits: Limits::default(),
+        injections: vec![],
+        policy: trace_model::Policy::RoundRobin,
+        seed: 0,
+        schedule: vec![],
+    };
+    let c = pss_tracer::tracer::run_compact(&opts);
+    assert!(matches!(c.outcome, Outcome::Exited { code: 0 }), "{:?}", c.outcome);
+    assert!(c.step_count > 10_000, "{} pasos", c.step_count);
+    assert_eq!(
+        c.chunks.len() as u64,
+        c.step_count.div_ceil(trace_model::compact::CHUNK_STEPS as u64)
+    );
+    let bytes: usize = serde_json::to_string(&c).unwrap().len();
+    assert!(
+        bytes < c.step_count as usize * 60,
+        "{bytes} bytes para {} pasos",
+        c.step_count
+    );
+    let lines = trace_model::compact::decode_column(&c.index.actor_line).unwrap();
+    assert_eq!(lines.len() as u64, c.step_count);
+    // El último bloque se lee por su cuenta y termina con el programa.
+    let (steps, snapshots) = trace_model::compact::decode_chunk(c.chunks.last().unwrap()).unwrap();
+    let last = steps.last().unwrap();
+    assert_eq!(last.t + 1, c.step_count);
+    let mem = last.processes[0].mem.as_ref().unwrap();
+    assert!(snapshots.contains_key(mem));
+    assert_eq!(
+        c.output.iter().map(|o| o.bytes.as_str()).collect::<String>(),
+        "2252250\n"
+    );
+}
+
+#[test]
+fn sigusr1_stops_the_cli_and_keeps_what_ran() {
+    use std::io::{BufRead, BufReader};
+    let dir = std::env::temp_dir().join(format!("pss-stop-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let src = dir.join("bucle.c");
+    std::fs::write(
+        &src,
+        "int main(void) {\n    long s = 0;\n    while (1)\n        s++;\n}\n",
+    )
+    .unwrap();
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_pss-tracer"))
+        .arg("--source")
+        .arg(&src)
+        .arg("--progress")
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    // Espera a que informe avance y lo detiene.
+    let mut err = BufReader::new(child.stderr.take().unwrap());
+    let mut line = String::new();
+    loop {
+        line.clear();
+        assert!(err.read_line(&mut line).unwrap() > 0, "terminó sin informar avance");
+        if line.starts_with("progress ") && line.trim()[9..].parse::<u64>().unwrap() > 0 {
+            break;
+        }
+    }
+    unsafe { libc::kill(child.id() as i32, libc::SIGUSR1) };
+    let out = child.wait_with_output().unwrap();
+    assert!(out.status.success());
+    let c: trace_model::compact::CompactTrace = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(c.truncated_reason, Some(trace_model::TruncatedReason::Stopped));
+    assert!(c.step_count > 0);
+    let back = trace_model::compact::decode(&c).unwrap();
+    let last = back.steps.last().unwrap();
+    assert!(matches!(last.events.last(), Some(Event::Truncated { .. })));
+    std::fs::remove_dir_all(&dir).unwrap();
+}

@@ -118,3 +118,54 @@ test('en modo manual se elige qué hilo avanza y el cambio viaja en la URL', asy
   await expect(page).toHaveURL(/orden=/, { timeout: 20_000 });
   await expect(counter(page)).toHaveText('5');
 });
+
+const steps = async (page: Page) => Number((await counter(page).textContent())!.replace(/\./g, ''));
+
+async function typeProgram(page: Page, source: string) {
+  await page.goto('/#ejemplo=01_structs&t=0');
+  await waitForTrace(page);
+  await page.getByRole('button', { name: 'Editar' }).click();
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.type(source);
+  await page.getByRole('button', { name: 'Ejecutar' }).click();
+}
+
+test('una ejecución de cientos de miles de pasos muestra su avance y se recorre entera', async ({ page }) => {
+  test.setTimeout(300_000);
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await typeProgram(page, '#include <stdio.h>\nint main(void) {\nlong s = 0;\nfor (long i = 0; i < 100000; i++)\ns += i;\nprintf("%ld\\n", s);\nreturn 0;\n}\n');
+  await expect(page.locator('.run-progress')).toContainText('pasos', { timeout: 30_000 });
+  await expect(page.locator('.run-progress')).toBeHidden({ timeout: 280_000 });
+  await page.keyboard.press('End');
+  const last = await steps(page);
+  expect(last).toBeGreaterThan(200_000);
+  await expect(terminal(page)).toContainText('4999950000');
+  // Saltar a la mitad con la línea de tiempo y moverse paso a paso responde al instante.
+  const track = page.locator('.timeline-track');
+  const box = (await track.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const mid = await steps(page);
+  expect(Math.abs(mid - last / 2)).toBeLessThan(last / 20);
+  const before = Date.now();
+  await page.keyboard.press('ArrowLeft');
+  await expect(counter(page)).toHaveText((mid - 1).toLocaleString('es-CL'));
+  expect(Date.now() - before).toBeLessThan(1000);
+  await expect(page.locator('.cm-next').first()).toBeAttached();
+  await page.keyboard.press('Home');
+  await expect(counter(page)).toHaveText('0');
+  expect(errors).toEqual([]);
+});
+
+test('Detener corta la ejecución y muestra lo recorrido hasta ahí', async ({ page }) => {
+  test.setTimeout(120_000);
+  await typeProgram(page, 'int main(void) {\nlong s = 0;\nwhile (1)\ns++;\n}\n');
+  const stop = page.getByRole('button', { name: 'Detener' });
+  await expect(stop).toBeVisible({ timeout: 30_000 });
+  await stop.click();
+  await expect(page.locator('.run-progress')).toBeHidden({ timeout: 30_000 });
+  await page.keyboard.press('End');
+  expect(await steps(page)).toBeGreaterThan(0);
+  await expect(page.locator('.narration')).toContainText('se detuvo la ejecución');
+});

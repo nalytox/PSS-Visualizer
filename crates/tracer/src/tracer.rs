@@ -24,9 +24,10 @@ use nix::unistd::Pid;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use trace_model::compact::{CompactTrace, Encoder};
 use trace_model::*;
 
 /// PID del proceso inicial en la traza; sus descendientes reciben 1001, 1002… en orden de
@@ -54,13 +55,80 @@ pub struct Options {
     pub schedule: Vec<TaskRef>,
 }
 
+/// Pide al recorrido en curso que termine como si hubiera llegado a un límite (la persona
+/// presionó Detener). El CLI lo activa con SIGUSR1.
+pub static STOP: AtomicBool = AtomicBool::new(false);
+/// Pasos confirmados hasta ahora, para informar el avance.
+pub static PROGRESS: AtomicU64 = AtomicU64::new(0);
+
+/// Adónde van los pasos: todos en memoria (pruebas, trazas cortas) o comprimidos por bloques a
+/// medida que se producen (ejecuciones largas).
+enum Sink {
+    Full {
+        steps: Vec<Step>,
+        snapshots: BTreeMap<String, MemorySnapshot>,
+    },
+    Compact(Box<Encoder>),
+}
+
+impl Sink {
+    fn push(&mut self, step: Step, live: &HashMap<String, MemorySnapshot>) {
+        match self {
+            Sink::Full { steps, snapshots } => {
+                for id in step.processes.iter().filter_map(|p| p.mem.as_ref()) {
+                    if !snapshots.contains_key(id)
+                        && let Some(s) = live.get(id)
+                    {
+                        snapshots.insert(id.clone(), s.clone());
+                    }
+                }
+                steps.push(step);
+            }
+            Sink::Compact(e) => e.push(&step, |id| live.get(id)),
+        }
+    }
+
+    fn compressed_bytes(&self) -> u64 {
+        match self {
+            Sink::Full { .. } => 0,
+            Sink::Compact(e) => e.compressed_bytes(),
+        }
+    }
+}
+
+/// Traza completa, con todos los pasos en memoria.
 pub fn run(opts: &Options) -> Trace {
+    let (mut trace, sink) = run_with(
+        opts,
+        Sink::Full {
+            steps: Vec::new(),
+            snapshots: BTreeMap::new(),
+        },
+    );
+    if let Sink::Full { steps, snapshots } = sink {
+        trace.steps = steps;
+        trace.snapshots = snapshots;
+    }
+    trace
+}
+
+/// Traza compacta (versión 2): no guarda la ejecución entera en memoria.
+pub fn run_compact(opts: &Options) -> CompactTrace {
+    let (trace, sink) = run_with(opts, Sink::Compact(Box::default()));
+    match sink {
+        Sink::Compact(e) => e.finish(&trace),
+        Sink::Full { .. } => unreachable!(),
+    }
+}
+
+fn run_with(opts: &Options, sink: Sink) -> (Trace, Sink) {
     // Los huérfanos pasan al tracer y no al init del sistema: así el tracer los recoge.
     unsafe { libc::prctl(libc::PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) };
+    PROGRESS.store(0, Ordering::Relaxed);
     let dir = work_dir();
-    let trace = run_in(&dir, opts);
+    let out = run_in(&dir, opts, sink);
     let _ = std::fs::remove_dir_all(&dir);
-    trace
+    out
 }
 
 fn work_dir() -> PathBuf {
@@ -108,7 +176,7 @@ fn empty_trace(opts: &Options, compile: CompileResult, outcome: Outcome) -> Trac
     }
 }
 
-fn run_in(dir: &Path, opts: &Options) -> Trace {
+fn run_in(dir: &Path, opts: &Options, sink: Sink) -> (Trace, Sink) {
     let compiled = match compile::compile(dir, &opts.source) {
         Ok(c) => c,
         Err(e) => {
@@ -122,11 +190,11 @@ fn run_in(dir: &Path, opts: &Options) -> Trace {
                     message: format!("no se pudo ejecutar gcc: {e}"),
                 }],
             };
-            return empty_trace(opts, result, Outcome::CompileError);
+            return (empty_trace(opts, result, Outcome::CompileError), sink);
         }
     };
     if !compiled.result.ok {
-        return empty_trace(opts, compiled.result, Outcome::CompileError);
+        return (empty_trace(opts, compiled.result, Outcome::CompileError), sink);
     }
     let debug = match DebugInfo::load(&compiled.binary, SOURCE_NAME) {
         Ok(d) => d,
@@ -139,7 +207,7 @@ fn run_in(dir: &Path, opts: &Options) -> Trace {
                 severity: Severity::Error,
                 message,
             });
-            return empty_trace(opts, result, Outcome::CompileError);
+            return (empty_trace(opts, result, Outcome::CompileError), sink);
         }
     };
     let mut trace = empty_trace(opts, compiled.result, Outcome::Truncated);
@@ -161,7 +229,7 @@ fn run_in(dir: &Path, opts: &Options) -> Trace {
             });
             trace.compile.ok = false;
             trace.outcome = Outcome::CompileError;
-            return trace;
+            return (trace, sink);
         }
     };
     let binary_path = std::fs::canonicalize(&compiled.binary)
@@ -182,11 +250,19 @@ fn run_in(dir: &Path, opts: &Options) -> Trace {
             message: "el programa no pudo iniciarse".into(),
         });
         trace.outcome = Outcome::CompileError;
-        return trace;
+        return (trace, sink);
     };
-    let engine = Engine::new(&debug, opts, launched.pid, tracee, launched.stdin_writer, binary_path);
-    engine.run(&mut trace);
-    trace
+    let engine = Engine::new(
+        &debug,
+        opts,
+        launched.pid,
+        tracee,
+        launched.stdin_writer,
+        binary_path,
+        sink,
+    );
+    let sink = engine.run(&mut trace);
+    (trace, sink)
 }
 
 /// Por qué terminó el recorrido completo.
@@ -401,9 +477,15 @@ struct Engine<'a> {
     t: u64,
     clock: u64,
     cursor: usize,
-    steps: Vec<Step>,
-    snapshots: BTreeMap<String, MemorySnapshot>,
-    snapshot_ids: HashMap<String, String>,
+    /// El último paso queda abierto hasta el siguiente: el cierre todavía le agrega eventos.
+    pending: Option<Step>,
+    sink: Sink,
+    step_count: u64,
+    /// Pasos con actor (los que cuenta una planificación manual).
+    actor_steps: usize,
+    /// Instantáneas que nombra algún proceso en su estado actual (o el paso abierto).
+    snapshots: HashMap<String, MemorySnapshot>,
+    next_snapshot: u64,
     output: Vec<OutputChunk>,
     events: Vec<Event>,
     pending_output: Vec<(u32, u32, Stream, String)>,
@@ -424,6 +506,7 @@ impl<'a> Engine<'a> {
         tracee: Tracee,
         stdin_writer: Option<File>,
         binary_path: String,
+        sink: Sink,
     ) -> Self {
         let timed_out = Arc::new(AtomicBool::new(false));
         let finished = Arc::new(AtomicBool::new(false));
@@ -436,9 +519,18 @@ impl<'a> Engine<'a> {
             let live = live.clone();
             std::thread::spawn(move || {
                 let deadline = Instant::now() + Duration::from_millis(ms);
+                let mut stop_at: Option<Instant> = None;
                 while Instant::now() < deadline {
                     if done.load(Ordering::SeqCst) {
                         return;
+                    }
+                    // Al pedir Detener, el recorrido termina en su próximo paso; si el programa
+                    // está bloqueado en el kernel no hay próximo paso y se lo mata igual.
+                    if STOP.load(Ordering::Relaxed) {
+                        let at = *stop_at.get_or_insert_with(Instant::now);
+                        if at.elapsed() > Duration::from_secs(1) {
+                            break;
+                        }
                     }
                     std::thread::sleep(Duration::from_millis(20));
                 }
@@ -506,9 +598,12 @@ impl<'a> Engine<'a> {
             t: 0,
             clock: 0,
             cursor: 0,
-            steps: Vec::new(),
-            snapshots: BTreeMap::new(),
-            snapshot_ids: HashMap::new(),
+            pending: None,
+            sink,
+            step_count: 0,
+            actor_steps: 0,
+            snapshots: HashMap::new(),
+            next_snapshot: 0,
             output: Vec::new(),
             events: Vec::new(),
             pending_output: Vec::new(),
@@ -521,9 +616,9 @@ impl<'a> Engine<'a> {
         }
     }
 
-    fn run(mut self, trace: &mut Trace) {
+    fn run(mut self, trace: &mut Trace) -> Sink {
         let end = self.drive();
-        self.finish(end, trace);
+        self.finish(end, trace)
     }
 
     // ---------- planificación ----------
@@ -644,8 +739,7 @@ impl<'a> Engine<'a> {
         let ready: Vec<usize> = (0..self.procs.len())
             .filter(|&i| self.procs[i].state == PState::Ready)
             .collect();
-        let done = self.steps.iter().filter(|s| s.actor.is_some()).count();
-        if let Some(want) = self.opts.schedule.get(done)
+        if let Some(want) = self.opts.schedule.get(self.actor_steps)
             && let Some(&i) = ready
                 .iter()
                 .find(|&&i| self.procs[i].vpid == want.pid && self.procs[i].tid == want.tid)
@@ -662,7 +756,7 @@ impl<'a> Engine<'a> {
             return Some(ready[(x.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 33) as usize % ready.len()]);
         }
         let n = self.procs.len();
-        let first = if self.steps.len() <= 1 { 0 } else { self.cursor + 1 };
+        let first = if self.step_count <= 1 { 0 } else { self.cursor + 1 };
         (0..n)
             .map(|k| (first + k) % n)
             .find(|&i| self.procs[i].state == PState::Ready)
@@ -830,8 +924,14 @@ impl<'a> Engine<'a> {
     }
 
     fn limit_reached(&self) -> Option<End> {
-        if self.steps.len() as u64 >= self.opts.limits.max_steps {
+        if self.step_count >= self.opts.limits.max_steps {
             return Some(End::Truncated(TruncatedReason::Steps));
+        }
+        if STOP.load(Ordering::Relaxed) {
+            return Some(End::Truncated(TruncatedReason::Stopped));
+        }
+        if self.sink.compressed_bytes() > self.opts.limits.trace_bytes_compressed {
+            return Some(End::Truncated(TruncatedReason::TraceSize));
         }
         if self.started.elapsed() > Duration::from_millis(self.opts.limits.wall_time_ms)
             || self.timed_out.load(Ordering::SeqCst)
@@ -2346,20 +2446,23 @@ impl<'a> Engine<'a> {
         });
     }
 
-    fn snapshot_id(&mut self, snap: MemorySnapshot) -> String {
-        let key = serde_json::to_string(&snap).unwrap();
-        if let Some(id) = self.snapshot_ids.get(&key) {
-            return id.clone();
+    /// Nombre para una instantánea nueva del proceso `i`: si su memoria no cambió desde la
+    /// anterior, se reutiliza esa.
+    fn snapshot_id(&mut self, i: usize, snap: MemorySnapshot) -> String {
+        if let Some(prev) = &self.procs[i].mem
+            && self.snapshots.get(prev) == Some(&snap)
+        {
+            return prev.clone();
         }
-        let id = format!("m{}", self.snapshot_ids.len());
-        self.snapshot_ids.insert(key, id.clone());
+        let id = format!("m{}", self.next_snapshot);
+        self.next_snapshot += 1;
         self.snapshots.insert(id.clone(), snap);
         id
     }
 
     /// Instantánea del proceso detenido en una línea; actualiza su posición.
     fn capture(&mut self, i: usize, regs: &Regs, line: u32) {
-        let t = if self.steps.is_empty() { 0 } else { self.t + 1 };
+        let t = if self.step_count == 0 { 0 } else { self.t + 1 };
         let p = &self.procs[i];
         let mut frames = memory::unwind(self.debug, &p.tracee, regs, line);
         let func = frames
@@ -2406,7 +2509,7 @@ impl<'a> Engine<'a> {
             .filter(|q| q.vpid == vpid && q.alive())
             .map(|q| (q.tid, q.stack.clone()))
             .collect();
-        let mem = self.snapshot_id(snap);
+        let mem = self.snapshot_id(i, snap);
         let p = &mut self.procs[i];
         p.mem = Some(mem);
         p.last = Some(Stop {
@@ -3092,13 +3195,13 @@ impl<'a> Engine<'a> {
     }
 
     fn commit(&mut self, actor: Option<usize>, executed: Option<ExecutedLine>, choices: Vec<TaskRef>) {
-        let t = if self.steps.is_empty() { 0 } else { self.t + 1 };
+        let t = if self.step_count == 0 { 0 } else { self.t + 1 };
         self.take_output(t);
         let processes = (0..self.procs.len())
             .filter(|&k| self.procs[k].is_leader())
             .map(|k| self.view(k, actor, t))
             .collect();
-        self.steps.push(Step {
+        let step = Step {
             t,
             actor: actor.map(|a| TaskRef {
                 pid: self.procs[a].vpid,
@@ -3127,7 +3230,19 @@ impl<'a> Engine<'a> {
                 })
                 .collect(),
             sync: self.sync_view(),
-        });
+        };
+        if step.actor.is_some() {
+            self.actor_steps += 1;
+        }
+        if let Some(prev) = self.pending.replace(step) {
+            self.sink.push(prev, &self.snapshots);
+        }
+        // Solo se guardan las instantáneas que todavía nombra algún proceso.
+        let procs = &self.procs;
+        self.snapshots
+            .retain(|id, _| procs.iter().any(|p| p.mem.as_deref() == Some(id.as_str())));
+        self.step_count += 1;
+        PROGRESS.store(self.step_count, Ordering::Relaxed);
         self.t = t;
     }
 
@@ -3167,7 +3282,7 @@ impl<'a> Engine<'a> {
         snap.stacks = BTreeMap::from([(p.vpid, Vec::new())]);
         let visible: Vec<String> = p.heap.visible(t).map(|b| hex(b.addr)).collect();
         snap.heap.retain(|b| visible.contains(&b.addr));
-        Some(self.snapshot_id(snap))
+        Some(self.snapshot_id(i, snap))
     }
 
     // ---------- cierre ----------
@@ -3197,10 +3312,13 @@ impl<'a> Engine<'a> {
         self.finished.store(true, Ordering::SeqCst);
     }
 
-    fn finish(mut self, end: End, trace: &mut Trace) {
+    fn finish(mut self, end: End, trace: &mut Trace) -> Sink {
         self.kill_all();
-        // Cuando el vigilante mató a los procesos, es un corte por tiempo y no una salida.
-        let end = if self.timed_out.load(Ordering::SeqCst) {
+        // Cuando el vigilante mató a los procesos, es un corte por tiempo (o porque se pidió
+        // detener) y no una salida.
+        let end = if STOP.load(Ordering::Relaxed) && !matches!(end, End::Done) {
+            End::Truncated(TruncatedReason::Stopped)
+        } else if self.timed_out.load(Ordering::SeqCst) {
             End::Truncated(TruncatedReason::Time)
         } else {
             end
@@ -3223,20 +3341,22 @@ impl<'a> Engine<'a> {
             }
             End::Truncated(reason) => return self.truncate(reason, trace),
         }
-        self.write_into(trace);
+        self.write_into(trace)
     }
 
     fn push_final_event(&mut self, event: Event) {
-        if let Some(last) = self.steps.last_mut() {
+        if let Some(last) = self.pending.as_mut() {
             last.events.push(event);
         }
     }
 
-    fn truncate(mut self, reason: TruncatedReason, trace: &mut Trace) {
+    fn truncate(mut self, reason: TruncatedReason, trace: &mut Trace) -> Sink {
         let text = match reason {
             TruncatedReason::Steps => format!("se alcanzó el límite de {} pasos", self.opts.limits.max_steps),
             TruncatedReason::Time => format!("se alcanzó el límite de {} s", self.opts.limits.wall_time_ms / 1000),
             TruncatedReason::Output => "el programa escribió más salida de la permitida".to_string(),
+            TruncatedReason::Stopped => "se detuvo la ejecución".to_string(),
+            TruncatedReason::TraceSize => "la traza llegó a su tamaño máximo".to_string(),
             TruncatedReason::Processes => format!(
                 "se alcanzó el límite de {} procesos: el siguiente fork no se ejecutó",
                 self.opts.limits.max_processes
@@ -3248,15 +3368,17 @@ impl<'a> Engine<'a> {
         trace.outcome = Outcome::Truncated;
         trace.truncated = true;
         trace.truncated_reason = Some(reason);
-        self.write_into(trace);
+        self.write_into(trace)
     }
 
-    fn write_into(self, trace: &mut Trace) {
-        trace.steps = self.steps;
-        trace.snapshots = self.snapshots;
+    fn write_into(mut self, trace: &mut Trace) -> Sink {
+        if let Some(last) = self.pending.take() {
+            self.sink.push(last, &self.snapshots);
+        }
         trace.output = self.output;
         trace.summary.mem_errors = self.mem_errors;
         trace.summary.leaks = self.leaks;
+        self.sink
     }
 }
 

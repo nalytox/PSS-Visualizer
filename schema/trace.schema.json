@@ -57,7 +57,8 @@
         "threads",
         "memory",
         "output",
-        "traceSize"
+        "traceSize",
+        "stopped"
       ]
     },
     "steps": {

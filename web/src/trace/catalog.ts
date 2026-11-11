@@ -1,11 +1,12 @@
 // Galería de trazas disponibles sin servidor. En la fase 0 son las sintéticas.
+import { loadTrace, type LoadedTrace } from './loaded.ts';
 import type { Trace } from './types.ts';
 
 export interface CatalogEntry {
   id: string;
   title: string;
   summary: string;
-  load: () => Promise<Trace>;
+  load: () => Promise<LoadedTrace>;
 }
 
 const files = {
@@ -42,6 +43,6 @@ export const catalog: CatalogEntry[] = Object.entries(files)
   .map(([path, load]) => {
     const id = path.split('/').pop()!.replace(/\.json$/, '');
     const meta = META[id] ?? { title: id, summary: '' };
-    return { id, ...meta, load };
+    return { id, ...meta, load: async () => loadTrace(await load()) };
   })
   .sort((a, b) => Object.keys(META).indexOf(a.id) - Object.keys(META).indexOf(b.id));

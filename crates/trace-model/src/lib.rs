@@ -6,6 +6,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+pub mod compact;
+pub mod delta;
+
 pub type Pid = u32;
 pub type Tid = u32;
 pub type Fdnum = u32;
@@ -57,6 +60,8 @@ pub enum TruncatedReason {
     Memory,
     Output,
     TraceSize,
+    /// La persona detuvo la ejecución.
+    Stopped,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

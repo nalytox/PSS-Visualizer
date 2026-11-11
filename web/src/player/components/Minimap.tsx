@@ -24,7 +24,7 @@ export function Minimap(props: {
   const vy = (-view.y / view.k - b.y) * m;
   const vw = (size.w / view.k) * m;
   const vh = (size.h / view.k) * m;
-  const actor = trace.steps[player.t].actor?.pid;
+  const actor = trace.step(player.t).actor?.pid;
 
   const center = (e: React.PointerEvent<SVGSVGElement>) => {
     const r = e.currentTarget.getBoundingClientRect();

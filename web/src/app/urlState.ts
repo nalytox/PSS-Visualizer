@@ -31,8 +31,8 @@ export async function readHash(): Promise<UrlState> {
   const plan = params.get('plan');
   if (plan === 'random' || plan === 'manual') state.policy = plan;
   if (params.get('semilla')) state.seed = Number(params.get('semilla')) || 0;
-  const sched = (params.get('orden') ?? '').split(',').filter(Boolean).map((x) => x.split('.').map(Number));
-  if (sched.length > 0 && sched.every((x) => x.length === 2 && x.every(Number.isInteger))) state.schedule = sched.map(([pid, tid]) => ({ pid, tid }));
+  const sched = parseSchedule(params.get('orden') ?? '');
+  if (sched && sched.length > 0) state.schedule = sched;
   return state;
 }
 
@@ -46,10 +46,34 @@ export async function writeHash(s: UrlState): Promise<void> {
   if (s.ctrlc && s.ctrlc.length > 0) params.set('ctrlc', s.ctrlc.join(','));
   if (s.policy) params.set('plan', s.policy);
   if (s.policy === 'random') params.set('semilla', String(s.seed ?? 0));
-  if (s.schedule && s.schedule.length > 0) params.set('orden', s.schedule.map((x) => `${x.pid}.${x.tid}`).join(','));
+  if (s.schedule && s.schedule.length > 0) params.set('orden', formatSchedule(s.schedule));
   params.set('t', String(s.t));
   const hash = '#' + params.toString();
   if (window.location.hash !== hash) window.history.replaceState(null, '', hash);
+}
+
+// `1000.1000,1000.1001*40`: cada tarea elegida a mano y cuántos pasos seguidos.
+export function formatSchedule(list: { pid: number; tid: number }[]): string {
+  const parts: string[] = [];
+  for (let i = 0; i < list.length; ) {
+    let j = i + 1;
+    while (j < list.length && list[j].pid === list[i].pid && list[j].tid === list[i].tid) j++;
+    parts.push(`${list[i].pid}.${list[i].tid}${j - i > 1 ? `*${j - i}` : ''}`);
+    i = j;
+  }
+  return parts.join(',');
+}
+
+export function parseSchedule(text: string): { pid: number; tid: number }[] | null {
+  const out: { pid: number; tid: number }[] = [];
+  for (const part of text.split(',').filter(Boolean)) {
+    const [task, times = '1'] = part.split('*');
+    const ids = task.split('.').map(Number);
+    const n = Number(times);
+    if (ids.length !== 2 || !ids.every(Number.isInteger) || !Number.isInteger(n) || n < 1 || out.length + n > 10_000_000) return null;
+    for (let k = 0; k < n; k++) out.push({ pid: ids[0], tid: ids[1] });
+  }
+  return out;
 }
 
 async function deflate(text: string): Promise<string> {
