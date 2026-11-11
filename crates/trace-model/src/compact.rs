@@ -195,8 +195,10 @@ fn encode_column(values: &[u32]) -> String {
 pub fn decode_column(text: &str) -> Result<Vec<u32>, String> {
     let bytes = gunzip(&BASE64.decode(text).map_err(|e| e.to_string())?)?;
     Ok(bytes
-        .chunks_exact(4)
-        .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| u32::from_le_bytes(*c))
         .collect())
 }
 

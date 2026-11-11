@@ -124,10 +124,14 @@ fn error(status: StatusCode, message: &str) -> Response {
     (status, Json(serde_json::json!({ "error": message }))).into_response()
 }
 
+fn failed(status: StatusCode, message: &str) -> Box<Response> {
+    Box::new(error(status, message))
+}
+
 /// Prepara el directorio de la ejecución y el comando del tracer.
-async fn prepare(state: &AppState, req: &RunRequest) -> Result<(PathBuf, tokio::process::Command), Response> {
+async fn prepare(state: &AppState, req: &RunRequest) -> Result<(PathBuf, tokio::process::Command), Box<Response>> {
     if !state.tracer.exists() {
-        return Err(error(
+        return Err(failed(
             StatusCode::SERVICE_UNAVAILABLE,
             "no se encontró pss-tracer junto al servidor",
         ));
@@ -135,7 +139,7 @@ async fn prepare(state: &AppState, req: &RunRequest) -> Result<(PathBuf, tokio::
     let policy = match req.policy.as_deref() {
         None | Some("round_robin") => None,
         Some(p @ ("random" | "manual")) => Some(p),
-        Some(_) => return Err(error(StatusCode::BAD_REQUEST, "política inválida")),
+        Some(_) => return Err(failed(StatusCode::BAD_REQUEST, "política inválida")),
     };
     for inj in &req.injections {
         let valid = inj.signal.len() <= 12
@@ -144,11 +148,11 @@ async fn prepare(state: &AppState, req: &RunRequest) -> Result<(PathBuf, tokio::
                 .chars()
                 .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit());
         if !valid {
-            return Err(error(StatusCode::BAD_REQUEST, "señal inválida"));
+            return Err(failed(StatusCode::BAD_REQUEST, "señal inválida"));
         }
     }
     if req.schedule.iter().map(|t| t.n).sum::<u64>() > 10_000_000 {
-        return Err(error(StatusCode::BAD_REQUEST, "planificación demasiado larga"));
+        return Err(failed(StatusCode::BAD_REQUEST, "planificación demasiado larga"));
     }
     let dir = std::env::temp_dir().join(format!("pss-run-{}-{}", std::process::id(), next_id()));
     let source_path = dir.join("entrada.c");
@@ -169,7 +173,7 @@ async fn prepare(state: &AppState, req: &RunRequest) -> Result<(PathBuf, tokio::
     .await;
     if let Err(e) = prepared {
         let _ = tokio::fs::remove_dir_all(&dir).await;
-        return Err(error(
+        return Err(failed(
             StatusCode::INTERNAL_SERVER_ERROR,
             &format!("no se pudo preparar la ejecución: {e}"),
         ));
@@ -204,7 +208,7 @@ async fn run(State(state): State<Arc<AppState>>, Json(req): Json<RunRequest>) ->
     };
     let (dir, mut cmd) = match prepare(&state, &req).await {
         Ok(x) => x,
-        Err(r) => return r,
+        Err(r) => return *r,
     };
     let output = tokio::time::timeout(state.timeout, cmd.output()).await;
     let _ = tokio::fs::remove_dir_all(&dir).await;
@@ -235,7 +239,7 @@ fn line(v: serde_json::Value) -> Bytes {
 async fn run_stream(State(state): State<Arc<AppState>>, Json(req): Json<RunRequest>) -> Response {
     let (dir, mut cmd) = match prepare(&state, &req).await {
         Ok(x) => x,
-        Err(r) => return r,
+        Err(r) => return *r,
     };
     cmd.arg("--progress")
         .stdout(std::process::Stdio::piped())
