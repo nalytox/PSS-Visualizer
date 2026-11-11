@@ -59,7 +59,16 @@ test('el programa editado viaja en la URL', async ({ page }) => {
   await page.getByRole('button', { name: 'Ejecutar' }).click();
   // Hasta que termina la nueva ejecución se sigue viendo la anterior.
   await expect(page.locator('.badge', { hasText: 'visualizando' })).toBeVisible({ timeout: 20_000 });
-  await expect(page).toHaveURL(/codigo=/);
+  // Mientras se editaba, la URL guardaba el programa anterior (el que se veía): se espera a que
+  // el parámetro comprimido traiga el nuevo.
+  const codeInUrl = () =>
+    page.evaluate(async () => {
+      const data = new URLSearchParams(location.hash.slice(1)).get('codigo');
+      if (!data) return '';
+      const bytes = Uint8Array.from(atob(data.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+      return await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    });
+  await expect.poll(codeInUrl, { timeout: 10_000 }).toContain('desde la URL');
   const url = page.url();
   const other = await page.context().newPage();
   await other.goto(url);
