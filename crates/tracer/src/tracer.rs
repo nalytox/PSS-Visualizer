@@ -1080,6 +1080,9 @@ impl<'a> Engine<'a> {
                     self.procs[i].at = At::Exiting;
                     self.free_run(i, false)?;
                 }
+                // Si la llamada era lo último de su línea, se vuelve justo al inicio de la siguiente:
+                // esa línea es una parada y no debe ejecutarse dentro de este paso.
+                check_here = true;
                 continue;
             }
 

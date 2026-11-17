@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { CompactTrace } from './compact-types.ts';
 import { applyPatch, eventFlags, flag, loadTrace, type LoadedTrace } from './loaded.ts';
-import { indexTrace, nextEventStep, runToLine } from './query.ts';
+import { indexTrace, nextEventStep, runToLine, stepRunningLine } from './query.ts';
 import type { Trace } from './types.ts';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -74,6 +74,25 @@ describe.each(compactNames)('traza compacta %s', (name) => {
     for (let t = 0; t < v1.length; t += 3) {
       expect(nextEventStep(v2, t)).toBe(nextEventStep(v1, t));
       expect(runToLine(v2, t, 10)).toBe(runToLine(v1, t, 10));
+    }
+  });
+});
+
+describe('ir al paso que ejecuta una línea', () => {
+  const names = readdirSync(root + 'traces/reference')
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => f.replace(/\.json$/, ''));
+
+  it.each(names)('%s: coincide con buscar paso por paso', (name) => {
+    const trace = loadTrace(read<Trace>(`traces/reference/${name}.json`));
+    const ran = Array.from({ length: trace.length }, (_, s) => trace.step(s).executed?.line ?? 0);
+    const lines = [...new Set(ran)].filter((l) => l > 0);
+    for (const line of [...lines, 9999]) {
+      for (const t of [0, Math.floor(trace.length / 2), trace.last]) {
+        const ahead = ran.findIndex((l, s) => s > t && l === line);
+        const expected = ahead >= 0 ? ahead : ran.indexOf(line) >= 0 ? ran.indexOf(line) : t;
+        expect(stepRunningLine(trace, t, line), `línea ${line} desde ${t}`).toBe(expected);
+      }
     }
   });
 });

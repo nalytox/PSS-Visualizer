@@ -35,7 +35,9 @@ select {
 .port-text,
 .capsule,
 .terminal-body,
-.stdin-body {
+.stdin-body,
+.theory-body code,
+.lesson-body code {
   font-variant-ligatures: none;
   font-feature-settings: 'liga' 0, 'calt' 0;
 }
@@ -180,9 +182,15 @@ button:disabled {
 }
 
 .main {
+  --code-w: 430px;
+  --theory-w: 360px;
   display: grid;
-  grid-template-columns: 430px 1fr;
+  grid-template-columns: var(--code-w) minmax(0, 1fr);
   min-height: 0;
+}
+
+.main.with-theory {
+  grid-template-columns: var(--code-w) minmax(0, 1fr) var(--theory-w);
 }
 
 .side {
@@ -1978,4 +1986,302 @@ button.run:hover:not(:disabled) {
 
 .stage-note .run-progress button {
   padding: 2px 10px;
+}
+
+/* ---------- Teoría: columna derecha con la explicación de cada paso ---------- */
+
+button.ghost.active {
+  background: var(--surface-2);
+  border-color: var(--purple-soft);
+  color: var(--text);
+}
+
+.theory {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.theory-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.theory-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+}
+
+.theory-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 14px 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.theory-body h3,
+.lesson-body h3 {
+  margin: 12px 0 6px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.theory-body p,
+.lesson-body p {
+  margin: 6px 0;
+}
+
+.theory-body ul,
+.lesson-body ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.theory-body li,
+.lesson-body li {
+  margin: 3px 0;
+}
+
+.theory-body code,
+.lesson-body code {
+  font-family: var(--font-code);
+  font-size: 0.88em;
+  padding: 1px 4px;
+  border-radius: 5px;
+  background: var(--surface-2);
+}
+
+.md-code {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  overflow: auto;
+}
+
+.md-code code {
+  padding: 0;
+  background: none;
+  font-size: 12.5px;
+}
+
+.theory-goal {
+  margin: 6px 0 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--orange-soft);
+}
+
+.theory-line {
+  margin: 4px 0 10px;
+  padding: 2px 10px 6px;
+  border-left: 4px solid var(--purple);
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--purple-soft) 22%, transparent);
+}
+
+.theory-line h3 {
+  margin-top: 6px;
+}
+
+.concept {
+  margin: 8px 0;
+  padding: 4px 10px 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.concept summary {
+  cursor: pointer;
+  padding: 4px 0;
+  font-weight: 800;
+}
+
+.theory-end {
+  margin-top: 8px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+}
+
+.theory-empty {
+  color: var(--text-2);
+  font-style: italic;
+}
+
+/* Lección completa */
+.lesson-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+}
+
+.lesson-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(820px, 100%);
+  max-height: calc(100dvh - 48px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-lift);
+}
+
+.lesson-dialog:focus {
+  outline: none;
+}
+
+.lesson-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.lesson-head h2 {
+  margin: 0 auto 0 0;
+  font-size: 18px;
+}
+
+.lesson-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 22px 20px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.lesson-line {
+  margin: 10px 0;
+  padding: 2px 12px 6px;
+  border-left: 4px solid var(--purple-soft);
+}
+
+.lesson-line h4 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+  font-size: 14px;
+}
+
+.lesson-line h4 button {
+  margin-left: auto;
+}
+
+/* ---------- Esquinas para cambiar el tamaño del código ---------- */
+
+.code-panel {
+  position: relative;
+}
+
+.code-panel.sized {
+  flex: 0 0 auto;
+}
+
+.resize-corner {
+  position: absolute;
+  z-index: 3;
+  width: 16px;
+  height: 16px;
+  touch-action: none;
+}
+
+.resize-corner::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: var(--purple-soft);
+  border-style: solid;
+  border-width: 0;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.code-panel:hover .resize-corner::after,
+.resize-corner:focus-visible::after {
+  opacity: 1;
+}
+
+.resize-corner:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+.resize-corner.top-left {
+  top: -2px;
+  left: -2px;
+  cursor: nwse-resize;
+}
+
+.resize-corner.top-left::after {
+  top: 3px;
+  left: 3px;
+  border-top-width: 3px;
+  border-left-width: 3px;
+  border-top-left-radius: 4px;
+}
+
+.resize-corner.top-right {
+  top: -2px;
+  right: -2px;
+  cursor: nesw-resize;
+}
+
+.resize-corner.top-right::after {
+  top: 3px;
+  right: 3px;
+  border-top-width: 3px;
+  border-right-width: 3px;
+  border-top-right-radius: 4px;
+}
+
+.resize-corner.bottom-left {
+  bottom: -2px;
+  left: -2px;
+  cursor: nesw-resize;
+}
+
+.resize-corner.bottom-left::after {
+  bottom: 3px;
+  left: 3px;
+  border-bottom-width: 3px;
+  border-left-width: 3px;
+  border-bottom-left-radius: 4px;
+}
+
+.resize-corner.bottom-right {
+  bottom: -2px;
+  right: -2px;
+  cursor: nwse-resize;
+}
+
+.resize-corner.bottom-right::after {
+  bottom: 3px;
+  right: 3px;
+  border-bottom-width: 3px;
+  border-right-width: 3px;
+  border-bottom-right-radius: 4px;
 }

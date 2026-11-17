@@ -129,6 +129,16 @@ fn structs() {
         .map(|c| c["bytes"].as_str().unwrap())
         .collect();
     assert_eq!(out, ["pts[1] = (4, 5)\n", "esquina = (0, 2)\n"]);
+    // Cada línea de main es un paso propio, también las que siguen a una llamada que retorna
+    // justo al inicio de ellas (líneas 26 y 27).
+    let lines: Vec<u64> = t["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|s| s["executed"]["fn"] == "main")
+        .map(|s| s["executed"]["line"].as_u64().unwrap())
+        .collect();
+    assert_eq!(lines, (21..=30).collect::<Vec<_>>());
 }
 
 #[test]

@@ -93,6 +93,28 @@ export function runToLine(trace: LoadedTrace, t: number, line: number): number {
   return t;
 }
 
+// El primer paso después de t en el que una tarea ejecuta `line`; si ya no quedan, el primero de
+// toda la traza. Sin ninguno, t.
+export function stepRunningLine(trace: LoadedTrace, t: number, line: number): number {
+  const { actorPid, actorTid, actorLine } = trace.columns;
+  // Línea en la que espera cada tarea: la inicial, y después la que dejó su último paso.
+  const waiting = new Map<string, number>();
+  for (const p of trace.step(0).processes) for (const th of p.threads) if (th.line) waiting.set(`${p.pid}:${th.tid}`, th.line);
+  let first = -1;
+  for (let s = 1; s < trace.length; s++) {
+    if (actorPid[s] === 0) continue;
+    const key = `${actorPid[s]}:${actorTid[s]}`;
+    // Una tarea recién creada (fork, pthread_create) aún no aparece en las columnas.
+    const before = waiting.get(key) ?? threadAt(trace.step(s - 1), actorPid[s], actorTid[s])?.line ?? 0;
+    if (before === line) {
+      if (s > t) return s;
+      if (first < 0) first = s;
+    }
+    waiting.set(key, actorLine[s]);
+  }
+  return first >= 0 ? first : t;
+}
+
 // Quién avanzó en cada paso hasta t (los pasos del kernel no cuentan).
 export function actorsUpTo(trace: LoadedTrace, t: number): TaskRef[] {
   const { actorPid, actorTid } = trace.columns;

@@ -8,6 +8,8 @@ RUN cd web && npm ci --no-audit --no-fund
 COPY schema schema
 COPY traces traces
 COPY tools tools
+# Los ejemplos (.c, .stdin y sus lecciones .md) se incluyen en la interfaz al compilarla.
+COPY examples examples
 COPY web web
 RUN cd web && npm run build
 

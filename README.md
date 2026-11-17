@@ -45,6 +45,13 @@ el programa espera como lo haría en una terminal.
 La primera vez se abre una introducción de cuatro capítulos (forks, hilos, pipes y señales); después
 está en el botón **Introducción** de la barra superior.
 
+El panel **Teoría**, a la derecha, explica cada paso. En los programas de ejemplo muestra la lección
+paso a paso: la introducción teórica al inicio, la explicación de la línea que se acaba de ejecutar
+y, al final, un resumen y ejercicios. **Lección completa** abre la lección entera para leerla de
+corrido, y cada línea tiene un botón que lleva al paso que la ejecuta. En cualquier programa, también
+en los tuyos, el panel muestra una ficha teórica por cada evento del paso (fork, pipe, señal, mutex,
+malloc…). Se oculta con su ✕ y vuelve con el botón **Teoría**.
+
 ## Controles
 
 | Acción | Atajo |
@@ -57,6 +64,8 @@ está en el botón **Introducción** de la barra superior.
 | Avanzar hasta una línea | Clic en el margen del código |
 | Ctrl+C desde el paso actual (con servidor) | Botón Ctrl+C |
 | Elegir qué hilo avanza (modo manual, con servidor) | Planificación → Manual y el botón ▶ junto a cada hilo |
+| Agrandar o achicar el código | Arrastrar cualquier esquina del panel; doble clic vuelve al tamaño original |
+| Lo mismo con teclado | Tab hasta la esquina inferior derecha, flechas (Shift: más rápido), Inicio para restablecer |
 
 Pasa el mouse (o navega con Tab) sobre cualquier proceso, carril, tubo, cable o señal para ver el
 detalle técnico. Al pasar sobre un nodo de un carril se muestra la memoria de ese instante. La URL
@@ -76,10 +85,11 @@ web/             interfaz: Vite + React + TypeScript
   src/player/             reproductor SVG: procesos, carriles, tubos, señales, memoria
   src/editor/             panel de código (CodeMirror 6)
   src/intro/              modo introducción: motor determinista y los cuatro capítulos
+  src/lessons/            panel Teoría: lecciones de los ejemplos y fichas de conceptos (conceptos.md)
 tools/synth/     guiones que generan las trazas sintéticas
 traces/          trazas sintéticas (fase 0), de referencia de cada ejemplo (CI las compara) y compactas de muestra
 config/          límites de ejecución (sección 13)
-examples/        programas de la sección 14 (con su .stdin si leen entrada)
+examples/        programas de la sección 14 (con su .stdin si leen entrada) y su lección paso a paso (.md)
 ```
 
 ## Desarrollo

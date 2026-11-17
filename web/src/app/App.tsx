@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Contrast, GraduationCap, Moon, Pencil, Play, Sun, LoaderCircle, TriangleAlert, CircleX, Square } from 'lucide-react';
+import { BookOpen, Contrast, GraduationCap, Moon, Pencil, Play, Sun, LoaderCircle, TriangleAlert, CircleX, Square } from 'lucide-react';
 import { CodePanel, type CodeMarks } from '../editor/CodePanel.tsx';
 import { Canvas } from '../player/Canvas.tsx';
 import { Controls } from '../player/Controls.tsx';
@@ -10,17 +10,39 @@ import { catalog } from '../trace/catalog.ts';
 import { describeStep } from '../trace/describe.ts';
 import { fmt } from '../trace/format.ts';
 import type { LoadedTrace } from '../trace/loaded.ts';
-import { actorsUpTo, indexTrace, threadAt, threadLabel } from '../trace/query.ts';
+import { actorsUpTo, indexTrace, stepRunningLine, threadAt, threadLabel } from '../trace/query.ts';
 import type { Diagnostic, TaskRef } from '../trace/types.ts';
 import { runProgram, serverAvailable, stopRun } from './api.ts';
 import { blankProgram, examples } from './examples.ts';
 import { Intro } from '../intro/Intro.tsx';
+import { lessons } from '../lessons/index.ts';
+import type { Lesson } from '../lessons/lesson.ts';
+import { LessonDialog } from '../lessons/LessonDialog.tsx';
+import { TheoryPanel } from '../lessons/TheoryPanel.tsx';
+import { ResizeCorners, useCodeSize } from './CodeResize.tsx';
 import { StdinPanel } from './StdinPanel.tsx';
 import { TerminalPanel } from './TerminalPanel.tsx';
 import { readHash, writeHash, type UrlState } from './urlState.ts';
 import { useTheme } from './useTheme.ts';
 
 const INTRO_SEEN = 'pss-intro-visto';
+const THEORY_HIDDEN = 'pss-teoria-oculta';
+// Ancho de la columna de teoría (igual que --theory-w en app.css).
+const THEORY_W = 360;
+
+// La lección de un ejemplo vale mientras su código no se haya modificado.
+function lessonFor(example: string | undefined, source: string): Lesson | undefined {
+  const ex = examples.find((e) => e.id === example);
+  return ex && ex.source === source ? lessons.get(ex.id) : undefined;
+}
+
+function storedFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
 
 // Se abre sola en la primera visita, salvo que se llegue con un enlace a un programa o traza.
 function firstVisit(): boolean {
@@ -83,6 +105,8 @@ function Workspace({ initial }: { initial: UrlState }) {
   const runId = useRef<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+  const [theoryOpen, setTheoryOpen] = useState(() => !storedFlag(THEORY_HIDDEN));
+  const codeSize = useCodeSize();
   const keyRef = useRef(0);
   const started = useRef(false);
 
@@ -189,6 +213,16 @@ function Workspace({ initial }: { initial: UrlState }) {
     runError,
     diagnostics,
     stale,
+    theoryOpen,
+    onToggleTheory: () => {
+      setTheoryOpen(!theoryOpen);
+      try {
+        localStorage.setItem(THEORY_HIDDEN, theoryOpen ? '1' : '0');
+      } catch {
+        // Vale para esta visita.
+      }
+    },
+    codeSize,
     pickValue,
     onPick: pick,
     onEdit: edit,
@@ -277,6 +311,9 @@ interface Shared {
   onPolicy?: (policy: 'round_robin' | 'random' | 'manual', seed?: number) => void;
   onChoose?: (t: number, actors: TaskRef[], chosen: TaskRef) => void;
   onIntro?: () => void;
+  theoryOpen: boolean;
+  onToggleTheory: () => void;
+  codeSize: ReturnType<typeof useCodeSize>;
 }
 
 function WithTrace(props: Shared & { loaded: Loaded }) {
@@ -287,6 +324,8 @@ function WithTrace(props: Shared & { loaded: Loaded }) {
   usePlayerKeys(player);
   const t = player.t;
   const step = trace.step(t);
+  const lesson = lessonFor(doc.example, trace.source);
+  const [reading, setReading] = useState(false);
 
   useEffect(() => {
     const run = trace.run;
@@ -321,6 +360,17 @@ function WithTrace(props: Shared & { loaded: Loaded }) {
       codeSource={mode === 'edit' ? doc.source : trace.source}
       marks={marks}
       onLineClick={player.toLine}
+      theory={
+        <>
+          <TheoryPanel lesson={lesson} step={mode === 'view' ? step : undefined} t={t} last={player.last} onClose={props.onToggleTheory} onOpenLesson={() => setReading(true)} />
+          {reading && lesson && (
+            <LessonDialog
+              lesson={lesson}
+              onClose={() => setReading(false)}
+              onGoToLine={mode === 'view' ? (line) => player.goto(stepRunningLine(trace, player.t, line)) : undefined} />
+          )}
+        </>
+      }
       side={
         <>
           {mode === 'view' && (
@@ -375,6 +425,8 @@ function WithTrace(props: Shared & { loaded: Loaded }) {
 
 function WithoutTrace(props: Shared) {
   const marks: CodeMarks = useMemo(() => ({ executed: null, next: null, hover: null, cursors: [], diagnostics: props.diagnostics }), [props.diagnostics]);
+  const lesson = lessonFor(props.doc.example, props.doc.source);
+  const [reading, setReading] = useState(false);
   return (
     <Layout
       {...props}
@@ -382,6 +434,12 @@ function WithoutTrace(props: Shared) {
       codeSource={props.doc.source}
       marks={marks}
       onLineClick={() => {}}
+      theory={
+        <>
+          <TheoryPanel lesson={lesson} t={0} last={0} onClose={props.onToggleTheory} onOpenLesson={() => setReading(true)} />
+          {reading && lesson && <LessonDialog lesson={lesson} onClose={() => setReading(false)} />}
+        </>
+      }
       side={<StdinPanel mode="edit" doc={props.doc} t={0} atEnd={false} onEdit={props.onEdit} onMoreInput={() => {}} onEof={() => {}} busy={props.running} />}
       stage={
         <div className="stage-empty">
@@ -422,6 +480,7 @@ function Layout(
     side: React.ReactNode;
     stage: React.ReactNode;
     footer: React.ReactNode;
+    theory: React.ReactNode;
   },
 ) {
   const [theme, cycleTheme] = useTheme();
@@ -429,6 +488,8 @@ function Layout(
   const editing = props.mode === 'edit';
   const errors = props.diagnostics.filter((d) => d.severity !== 'note');
   const recorded = catalog.filter((c) => !examples.some((e) => e.id === c.id));
+  const codePanel = useRef<HTMLElement>(null);
+  const { size, setSize, save, reset } = props.codeSize;
 
   return (
     <div className="app">
@@ -471,6 +532,15 @@ function Layout(
           </button>
           <button
             type="button"
+            className={`ghost${props.theoryOpen ? ' active' : ''}`}
+            onClick={props.onToggleTheory}
+            aria-pressed={props.theoryOpen}
+            title="Explicación teórica de cada paso"
+          >
+            <BookOpen size={16} /> Teoría
+          </button>
+          <button
+            type="button"
             className="ghost icon"
             onClick={cycleTheme}
             aria-label={`Tema: ${theme === 'system' ? 'según el sistema' : theme === 'dark' ? 'oscuro' : 'claro'}. Cambiar tema`}
@@ -481,9 +551,15 @@ function Layout(
         </div>
       </header>
 
-      <main className="main">
+      <main className={`main${props.theoryOpen ? ' with-theory' : ''}`} style={{ '--code-w': `${size.width}px`, '--theory-w': `${THEORY_W}px` } as React.CSSProperties}>
         <aside className="side">
-          <section className={`panel code-panel${editing ? ' editing' : ''}`} aria-label="Código">
+          <section
+            ref={codePanel}
+            className={`panel code-panel${editing ? ' editing' : ''}${size.height !== null ? ' sized' : ''}`}
+            aria-label="Código"
+            style={size.height !== null ? { height: size.height } : undefined}
+          >
+            <ResizeCorners panel={codePanel} size={size} reserved={props.theoryOpen ? THEORY_W : 0} onResize={setSize} onCommit={save} onReset={reset} />
             <div className="panel-head">
               <h2>Código</h2>
               {!editing && <span className="badge">visualizando</span>}
@@ -538,6 +614,7 @@ function Layout(
         <section className="stage" aria-label="Procesos, hilos, pipes y señales">
           {props.stage}
         </section>
+        {props.theoryOpen && props.theory}
       </main>
 
       {props.footer && <footer className="bottombar">{props.footer}</footer>}
